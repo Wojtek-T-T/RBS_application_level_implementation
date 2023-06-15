@@ -6,7 +6,27 @@
 #include <semaphore.h>
 #include <stdbool.h>
 
-#define queue_size 3
+#define queue_size 10
+
+#define task_1_nodes 7
+#define task_2_nodes 5
+
+bool task_1_precedence_constraints[42] = 
+{
+0,	1,	1,	1,	0,	0,	0,
+0,	0,	0,	0,	1,	1,	0,
+0,	0,	0,	0,	1,	1,	0,
+0,	0,	0,	0,	1,	1,	0,
+0,	0,	0,	0,	0,	0,	1,
+0,	0,	0,	0,	0,	0,	1
+};
+bool task_1_precedence_constraints[20] = 
+{
+0,	1,	1,	1,	0,
+0,	0,	0,	0,	1,
+0,	0,	0,	0,	1,
+0,	0,	0,	0,	1
+};
 
 //task data structures
 struct job_token
@@ -162,6 +182,12 @@ void *sequence_2_3_function(void *arguments)
 
 struct job_token* GetNewJob(struct job_token *old_job_ptr, struct job_token *start_ptr)
 {
+    if(old_job_ptr == NULL)
+    {
+        return start_ptr;
+    }
+
+
     struct job_token *new_job = NULL;
     if((start_ptr + (queue_size - 1)) == old_job_ptr)
     {
@@ -174,9 +200,29 @@ struct job_token* GetNewJob(struct job_token *old_job_ptr, struct job_token *sta
     return new_job;
 }
 
-void initialize_new_job()
+void initialize_new_job(struct job_token *last_added_job_ptr, struct job_token *queue_start_ptr)
 {
-    
+    struct job_token *new_job = NULL;
+    if(last_added_job_ptr == NULL)
+    {
+        new_job = queue_start_ptr;
+    }
+    else if((queue_start_ptr + (queue_size - 1)) == last_added_job_ptr)
+    {
+        new_job = queue_start_ptr;
+    }
+    else
+    {
+        new_job = last_added_job_ptr + 1;
+    }
+
+    new_job->job_execution_state = 0;
+    pthread_mutex_init(&new_job->job_lock, NULL);
+}
+
+void finish_job(struct job_token *finished_job)
+{
+    pthread_mutex_destroy(&finished_job->job_lock);
 }
 
 void initialize_semaphores()
@@ -191,17 +237,33 @@ void initialize_semaphores()
     sem_init(&task_2_sequence_3_semaphore, 0, 0);
 }
 
-void finish_job()
+bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_matrix_pointer, u_int8_t node_number, struct job_token *job_pointer)
 {
+    u_int8_t start_index = (node_number-1) * number_of_nodes;
+    u_int32_t mask = 0xFFFFFFFF;
+    u_int32_t job_state_local = job_pointer->job_execution_state & mask;
+    bool *temp_bool_pointer = NULL;
 
-}
+    for(int x = 0; x < (number_of_nodes-1); x++)
+    {
+        u_int8_t temp_index = start_index + x;
+        temp_bool_pointer = precedence_matrix_pointer + temp_index;
 
-bool check_precedence_constraints()
-{
+        if(*temp_bool_pointer == true)
+        {
+            mask = 1;
+            mask = mask << x;
+            if((mask & job_state_local) == 0)
+            {
+                return false;
+            }
+        }
+    }
 
+    return true;
 }
 
 void one_time_unit_workload()
 {
-
+    for (int i = 0; i < (0xFFFFFFF); i++);
 }
