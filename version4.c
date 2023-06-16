@@ -6,26 +6,28 @@
 #include <semaphore.h>
 #include <stdbool.h>
 
-#define queue_size 10
+#define queue_size 3
 
 #define task_1_nodes 7
 #define task_2_nodes 5
 
-bool task_1_precedence_constraints[42] = 
+bool task_1_precedence_constraints[36] = 
 {
-0,	1,	1,	1,	0,	0,	0,
-0,	0,	0,	0,	1,	1,	0,
-0,	0,	0,	0,	1,	1,	0,
-0,	0,	0,	0,	1,	1,	0,
-0,	0,	0,	0,	0,	0,	1,
-0,	0,	0,	0,	0,	0,	1
+1,	0,	0,	0,	0,	0,
+1,	0,	0,	0,	1,	1,
+1,	0,	0,	0,	0,	0,
+0,	1,	1,	1,	0,	0,
+0,	1,	1,	1,	0,	0,
+0,	0,	0,	0,	1,	1
+
 };
-bool task_1_precedence_constraints[20] = 
+bool task_2_precedence_constraints[16] = 
 {
-0,	1,	1,	1,	0,
-0,	0,	0,	0,	1,
-0,	0,	0,	0,	1,
-0,	0,	0,	0,	1
+1,	0,	0,	0,
+1,	0,	0,	0,
+1,	0,	0,	0,
+0,	1,	1,	1
+
 };
 
 //task data structures
@@ -72,11 +74,11 @@ void *sequence_2_1_function(void *arguments);
 void *sequence_2_2_function(void *arguments);
 void *sequence_2_3_function(void *arguments);
 
-struct job_token * GetNewJob();
-void initialize_new_job();
+struct job_token* GetNewJob(struct job_token *old_job_ptr, struct job_token *start_ptr);
+void initialize_new_job(struct job_token *last_added_job_ptr, struct job_token *queue_start_ptr);
 void initialize_semaphores();
-void finish_job();
-bool check_precedence_constraints();
+void finish_job(struct job_token *finished_job);
+bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_matrix_pointer, u_int8_t node_number, struct job_token *job_pointer);
 void one_time_unit_workload();
 
 
@@ -107,6 +109,7 @@ int main(void)
     pthread_create( &task_2_sequence_3_thread, NULL, sequence_2_3_function, (void*) message1);
     */
 
+    /*
     task_1_jobs_queue[0].job_execution_state = 0;
     task_1_jobs_queue[1].job_execution_state = 1;
     task_1_jobs_queue[2].job_execution_state = 2;
@@ -133,7 +136,57 @@ int main(void)
     current_job = GetNewJob(current_job, start_pointer);
 
     printf("%d\n", current_job->job_execution_state);
+    */
 
+    /*
+    struct job_token *start_pointer = &task_1_jobs_queue[0];
+
+    task_1_jobs_queue[0].job_execution_state = 999;
+    task_1_jobs_queue[1].job_execution_state = 999;
+    task_1_jobs_queue[2].job_execution_state = 999;
+
+    for(int b = 0; b < 3; b++)
+    {
+        printf("value of queue place %d is %d\n", b, task_1_jobs_queue[b].job_execution_state);
+    }
+
+    initialize_new_job(NULL, start_pointer);
+
+    for(int b = 0; b < 3; b++)
+    {
+        printf("value of queue place %d is %d\n", b, task_1_jobs_queue[b].job_execution_state);
+    }
+
+    initialize_new_job((start_pointer), start_pointer);
+
+    for(int b = 0; b < 3; b++)
+    {
+        printf("value of queue place %d is %d\n", b, task_1_jobs_queue[b].job_execution_state);
+    }
+
+    task_1_jobs_queue[0].job_execution_state = 999;
+    task_1_jobs_queue[1].job_execution_state = 999;
+    task_1_jobs_queue[2].job_execution_state = 999;
+
+    initialize_new_job((start_pointer+2), start_pointer);
+
+    for(int b = 0; b < 3; b++)
+    {
+        printf("value of queue place %d is %d\n", b, task_1_jobs_queue[b].job_execution_state);
+    }
+    */
+
+    struct job_token *start_pointer = &task_1_jobs_queue[0];
+
+    initialize_new_job(NULL, start_pointer);
+
+    start_pointer->job_execution_state = 14;
+
+    bool *pre_pointer = task_1_precedence_constraints;
+
+    bool bla = check_precedence_constraints(7, pre_pointer, 5, start_pointer);
+
+    printf(" response is %d\n", bla);
 
 }
 
@@ -239,12 +292,18 @@ void initialize_semaphores()
 
 bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_matrix_pointer, u_int8_t node_number, struct job_token *job_pointer)
 {
-    u_int8_t start_index = (node_number-1) * number_of_nodes;
+    //source nodes doesn't have any precedence constraints
+    if(node_number == 1)
+    {
+        return true;
+    }
+
+    u_int8_t start_index = (node_number-2) * (number_of_nodes-1);
     u_int32_t mask = 0xFFFFFFFF;
     u_int32_t job_state_local = job_pointer->job_execution_state & mask;
     bool *temp_bool_pointer = NULL;
 
-    for(int x = 0; x < (number_of_nodes-1); x++)
+    for(int x = 0; x < (number_of_nodes-2); x++)
     {
         u_int8_t temp_index = start_index + x;
         temp_bool_pointer = precedence_matrix_pointer + temp_index;
