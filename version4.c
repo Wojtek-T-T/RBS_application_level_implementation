@@ -1,3 +1,4 @@
+#define _GNU_SOURCE 
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -5,6 +6,10 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <stdbool.h>
+#include <syslog.h>
+#include <time.h>
+#include <sched.h>
+#include <syslog.h>
 
 #define queue_size 3
 
@@ -19,23 +24,25 @@ bool task_1_precedence_constraints[36] =
 0,	1,	1,	1,	0,	0,
 0,	1,	1,	1,	0,	0,
 0,	0,	0,	0,	1,	1
-
 };
+
+
 bool task_2_precedence_constraints[16] = 
 {
 1,	0,	0,	0,
 1,	0,	0,	0,
 1,	0,	0,	0,
 0,	1,	1,	1
-
 };
+
 
 //task data structures
 struct job_token
 {
     u_int32_t job_execution_state;
+    u_int32_t job_state;
     pthread_mutex_t job_lock;
-    bool status;
+
 };
 
 struct job_token task_1_jobs_queue[queue_size];
@@ -80,11 +87,32 @@ void initialize_semaphores();
 void finish_job(struct job_token *finished_job);
 bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_matrix_pointer, u_int8_t node_number, struct job_token *job_pointer);
 void one_time_unit_workload();
+void finish_node(struct job_token *handled_job, int finished_node);
+void claim_node(struct job_token *handled_job, int claimed_node);
+void signal_sequence_head(int node_to_signal, struct job_token *handled_job, sem_t *semaphore, int num_nodes, bool *precedence_matrix_pointer);
+void set_cpu(int cpu_num);
 
+void node_1_1();
+void node_1_2();
+void node_1_3();
+void node_1_4();
+void node_1_5();
+void node_1_6();
+void node_1_7();
+
+void node_2_1();
+void node_2_2();
+void node_2_3();
+void node_2_4();
+void node_2_5();
+
+
+clock_t start;
 
 
 int main(void) 
 {
+    openlog("RBS_IMPLEMENTATION_LOG", LOG_PID|LOG_CONS, LOG_USER);
     initialize_semaphores();
 
     pthread_t task_1_sequence_1_thread;
@@ -98,95 +126,21 @@ int main(void)
 
     char *message1 = "thread 1 ";
 
-    /*
     pthread_create( &task_1_sequence_1_thread, NULL, sequence_1_1_function, (void*) message1);
-    pthread_create( &task_1_sequence_2_thread, NULL, sequence_1_2_function, (void*) message1);
-    pthread_create( &task_1_sequence_3_thread, NULL, sequence_1_3_function, (void*) message1);
-    pthread_create( &task_1_sequence_4_thread, NULL, sequence_1_4_function, (void*) message1);
+    //pthread_create( &task_1_sequence_2_thread, NULL, sequence_1_2_function, (void*) message1);
+    //pthread_create( &task_1_sequence_3_thread, NULL, sequence_1_3_function, (void*) message1);
+    //pthread_create( &task_1_sequence_4_thread, NULL, sequence_1_4_function, (void*) message1);
 
-    pthread_create( &task_2_sequence_1_thread, NULL, sequence_2_1_function, (void*) message1);
-    pthread_create( &task_2_sequence_2_thread, NULL, sequence_2_2_function, (void*) message1);
-    pthread_create( &task_2_sequence_3_thread, NULL, sequence_2_3_function, (void*) message1);
-    */
-
-    /*
-    task_1_jobs_queue[0].job_execution_state = 0;
-    task_1_jobs_queue[1].job_execution_state = 1;
-    task_1_jobs_queue[2].job_execution_state = 2;
-    //task_1_jobs_queue[3].job_execution_state = 3;
-
-    struct job_token *current_job = &task_1_jobs_queue[0];
 
     struct job_token *start_pointer = &task_1_jobs_queue[0];
 
-    printf("%d\n", current_job->job_execution_state);
 
-    current_job = GetNewJob(current_job, start_pointer);
+    start = clock();
 
-    printf("%d\n", current_job->job_execution_state);
+    //initialize_new_job(NULL, start_pointer);
 
-    current_job = GetNewJob(current_job, start_pointer);
-
-    printf("%d\n", current_job->job_execution_state);
-
-    current_job = GetNewJob(current_job, start_pointer);
-
-    printf("%d\n", current_job->job_execution_state);
-
-    current_job = GetNewJob(current_job, start_pointer);
-
-    printf("%d\n", current_job->job_execution_state);
-    */
-
-    /*
-    struct job_token *start_pointer = &task_1_jobs_queue[0];
-
-    task_1_jobs_queue[0].job_execution_state = 999;
-    task_1_jobs_queue[1].job_execution_state = 999;
-    task_1_jobs_queue[2].job_execution_state = 999;
-
-    for(int b = 0; b < 3; b++)
-    {
-        printf("value of queue place %d is %d\n", b, task_1_jobs_queue[b].job_execution_state);
-    }
-
-    initialize_new_job(NULL, start_pointer);
-
-    for(int b = 0; b < 3; b++)
-    {
-        printf("value of queue place %d is %d\n", b, task_1_jobs_queue[b].job_execution_state);
-    }
-
-    initialize_new_job((start_pointer), start_pointer);
-
-    for(int b = 0; b < 3; b++)
-    {
-        printf("value of queue place %d is %d\n", b, task_1_jobs_queue[b].job_execution_state);
-    }
-
-    task_1_jobs_queue[0].job_execution_state = 999;
-    task_1_jobs_queue[1].job_execution_state = 999;
-    task_1_jobs_queue[2].job_execution_state = 999;
-
-    initialize_new_job((start_pointer+2), start_pointer);
-
-    for(int b = 0; b < 3; b++)
-    {
-        printf("value of queue place %d is %d\n", b, task_1_jobs_queue[b].job_execution_state);
-    }
-    */
-
-    struct job_token *start_pointer = &task_1_jobs_queue[0];
-
-    initialize_new_job(NULL, start_pointer);
-
-    start_pointer->job_execution_state = 14;
-
-    bool *pre_pointer = task_1_precedence_constraints;
-
-    bool bla = check_precedence_constraints(7, pre_pointer, 5, start_pointer);
-
-    printf(" response is %d\n", bla);
+    syslog(LOG_INFO, "Started job of task 1 at:, %f", (float)start);
+    closelog();
 
 }
 
@@ -194,41 +148,260 @@ int main(void)
 
 void *sequence_1_1_function(void *arguments)
 {
-    sem_wait(&task_1_semaphore);
+    printf("thread started\n");
+    //set_cpu(1);
+
+    printf("cpu set\n");
+
+    struct job_token *old_job = NULL;
+    struct job_token *queue_start = &task_1_jobs_queue[0];
+    struct job_token *handled_job = NULL;
+    bool pre_flag= false;
+    bool *pre_pointer = task_1_precedence_constraints;
+    clock_t current_time;
+
+    while(true)
+    {
+        //wait for new job
+        sem_wait(&task_1_semaphore);
+
+        //Get pointer to the new job
+        handled_job = GetNewJob(old_job, queue_start);
+
+        //Start executing the first node
+        current_time = clock();
+        syslog(LOG_INFO, "Started execution of node 1 at:, %f", (float)start);
+        claim_node(handled_job, 1);
+        node_1_1();
+        finish_node(handled_job, 1);
+        current_time = clock();
+        syslog(LOG_INFO, "Finished execution of node 1 at:, %f", (float)start);
+
+        //Signal other sequences
+        signal_sequence_head(3, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
+        signal_sequence_head(4, handled_job, &task_1_sequence_3_semaphore, 7, pre_pointer);
+
+        //Check if the next node can be executed
+        pre_flag = check_precedence_constraints(7, pre_pointer, 2, handled_job);
+        if(pre_flag == false)
+        {
+            //terminate the sequence
+            continue;
+        }
+
+
+        //Execute node
+        claim_node(handled_job, 2);
+        node_1_2();
+        finish_node(handled_job, 2);
+
+        //Signal other sequences
+        signal_sequence_head(6, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
+
+
+        //Check if the next node can be executed
+        pre_flag = check_precedence_constraints(7, pre_pointer, 5, handled_job);
+        if(pre_flag == false)
+        {   
+            //terminate the sequence
+            continue;
+        }
+
+
+        //Execute node
+        claim_node(handled_job, 5);
+        node_1_5();
+        finish_node(handled_job, 5);
+
+
+        pre_flag = check_precedence_constraints(7, pre_pointer, 7, handled_job);
+        if(pre_flag == false)
+        {
+            //terminate the sequence
+            continue;
+        }
+
+        claim_node(handled_job, 7);
+        node_1_7();
+        finish_node(handled_job, 7);
+
+    }
     
 
 }
 
 void *sequence_1_2_function(void *arguments)
 {
-    sem_wait(&task_1_sequence_2_semaphore);
+    set_cpu(2);
+
+    struct job_token *old_job = NULL;
+    struct job_token *queue_start = &task_1_jobs_queue[0];
+    struct job_token *handled_job = NULL;
+    bool pre_flag= false;
+    bool *pre_pointer = task_1_precedence_constraints;
+
+    while(true)
+    {
+        sem_wait(&task_1_sequence_2_semaphore);
+
+        //Get pointer to the new job
+        handled_job = GetNewJob(old_job, queue_start);
+
+        //Start executing the first node
+        claim_node(handled_job, 3);
+        node_1_3();
+        finish_node(handled_job, 3);
+
+        //Signal other sequences
+        signal_sequence_head(6, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
+
+
+        //Check if the next node can be executed
+        pre_flag = check_precedence_constraints(7, pre_pointer, 5, handled_job);
+        if(pre_flag == false)
+        {   
+            //terminate the sequence
+            continue;
+        }
+
+
+        //Execute node
+        claim_node(handled_job, 5);
+        node_1_5();
+        finish_node(handled_job, 5);
+
+
+        pre_flag = check_precedence_constraints(7, pre_pointer, 7, handled_job);
+        if(pre_flag == false)
+        {
+            //terminate the sequence
+            continue;
+        }
+
+        claim_node(handled_job, 7);
+        node_1_7();
+        finish_node(handled_job, 7);
+
+
+    }
+    
 }
 
 void *sequence_1_3_function(void *arguments)
 {
-    sem_wait(&task_1_sequence_3_semaphore);
+    set_cpu(3);
+
+    struct job_token *old_job = NULL;
+    struct job_token *queue_start = &task_1_jobs_queue[0];
+    struct job_token *handled_job = NULL;
+    bool pre_flag= false;
+    bool *pre_pointer = task_1_precedence_constraints;
+
+    while(true)
+    {
+        sem_wait(&task_1_sequence_3_semaphore);
+
+        //Get pointer to the new job
+        handled_job = GetNewJob(old_job, queue_start);
+
+        //Start executing the first node
+        claim_node(handled_job, 4);
+        node_1_4();
+        finish_node(handled_job, 4);
+
+        //Signal other sequences
+        signal_sequence_head(6, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
+
+        //Check if the next node can be executed
+        pre_flag = check_precedence_constraints(7, pre_pointer, 5, handled_job);
+        if(pre_flag == false)
+        {   
+            //terminate the sequence
+            continue;
+        }
+
+
+        //Execute node
+        claim_node(handled_job, 5);
+        node_1_5();
+        finish_node(handled_job, 5);
+
+
+        pre_flag = check_precedence_constraints(7, pre_pointer, 7, handled_job);
+        if(pre_flag == false)
+        {
+            //terminate the sequence
+            continue;
+        }
+
+        claim_node(handled_job, 7);
+        node_1_7();
+        finish_node(handled_job, 7);
+    }
 
 }
 
 void *sequence_1_4_function(void *arguments)
 {
-    sem_wait(&task_1_sequence_4_semaphore);
+    set_cpu(4);
+
+    struct job_token *old_job = NULL;
+    struct job_token *queue_start = &task_1_jobs_queue[0];
+    struct job_token *handled_job = NULL;
+    bool pre_flag= false;
+    bool *pre_pointer = task_1_precedence_constraints;
+
+    while(true)
+    {
+        sem_wait(&task_1_sequence_4_semaphore);
+
+        //Get pointer to the new job
+        handled_job = GetNewJob(old_job, queue_start);
+
+        //Start executing the first node
+        claim_node(handled_job, 6);
+        node_1_6();
+        finish_node(handled_job, 6);
+
+        pre_flag = check_precedence_constraints(7, pre_pointer, 7, handled_job);
+        if(pre_flag == false)
+        {
+            //terminate the sequence
+            continue;
+        }
+
+        claim_node(handled_job, 7);
+        node_1_7();
+        finish_node(handled_job, 7);
+    }
 }
 
 void *sequence_2_1_function(void *arguments)
 {
-    sem_wait(&task_2_semaphore);
+
+
+    while(true)
+    {
+        sem_wait(&task_2_semaphore);
+    }
+    
 
 }
 
 void *sequence_2_2_function(void *arguments)
 {
-    sem_wait(&task_2_sequence_2_semaphore);
+    while(true)
+    {
+        sem_wait(&task_2_sequence_2_semaphore);
+    }
 }
 
 void *sequence_2_3_function(void *arguments)
 {
-    sem_wait(&task_2_sequence_3_semaphore);
+    while(true)
+    {
+        sem_wait(&task_2_sequence_3_semaphore);
+    }
 
 }
 
@@ -270,6 +443,7 @@ void initialize_new_job(struct job_token *last_added_job_ptr, struct job_token *
     }
 
     new_job->job_execution_state = 0;
+    new_job->job_state = 0;
     pthread_mutex_init(&new_job->job_lock, NULL);
 }
 
@@ -300,7 +474,7 @@ bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_mat
 
     u_int8_t start_index = (node_number-2) * (number_of_nodes-1);
     u_int32_t mask = 0xFFFFFFFF;
-    u_int32_t job_state_local = job_pointer->job_execution_state & mask;
+    u_int32_t job_state_local = job_pointer->job_state & mask;
     bool *temp_bool_pointer = NULL;
 
     for(int x = 0; x < (number_of_nodes-2); x++)
@@ -325,4 +499,123 @@ bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_mat
 void one_time_unit_workload()
 {
     for (int i = 0; i < (0xFFFFFFF); i++);
+}
+
+void finish_node(struct job_token *handled_job, int finished_node)
+{
+    int mask = 1;
+    mask = mask << (finished_node - 1);
+
+    pthread_mutex_lock(&handled_job->job_lock);
+
+    handled_job->job_state = handled_job->job_state | mask;
+
+    pthread_mutex_unlock(&handled_job->job_lock);
+}
+
+void claim_node(struct job_token *handled_job, int claimed_node)
+{
+    int mask = 1;
+    mask = mask << (claimed_node - 1);
+
+    pthread_mutex_lock(&handled_job->job_lock);
+
+    handled_job->job_execution_state = handled_job->job_execution_state | mask;
+
+    pthread_mutex_unlock(&handled_job->job_lock);
+}
+
+void signal_sequence_head(int node_to_signal, struct job_token *handled_job, sem_t *semaphore, int num_nodes, bool *precedence_matrix_pointer)
+{
+    bool signal_flag = check_precedence_constraints(num_nodes, precedence_matrix_pointer, node_to_signal, handled_job);
+
+    if(signal_flag == true)
+    {
+        sem_post(semaphore);
+    }
+}
+
+void set_cpu(int cpu_num)
+{
+   int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+   cpu_set_t cpuset;
+   CPU_ZERO(&cpuset);
+   CPU_SET(cpu_num, &cpuset);  
+   int result = pthread_setaffinity_np(0, sizeof(cpu_set_t), &cpuset);
+}
+
+
+void node_1_1()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_1_2()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_1_3()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_1_4()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_1_5()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_1_6()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_1_7()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_2_1()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_2_2()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_2_3()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_2_4()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
+}
+
+void node_2_5()
+{
+    one_time_unit_workload();
+    one_time_unit_workload();
 }
