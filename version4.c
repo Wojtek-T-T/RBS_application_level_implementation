@@ -19,7 +19,7 @@
 bool task_1_precedence_constraints[36] = 
 {
 1,	0,	0,	0,	0,	0,
-1,	0,	0,	0,	1,	1,
+1,	0,	0,	0,	0,	0,
 1,	0,	0,	0,	0,	0,
 0,	1,	1,	1,	0,	0,
 0,	1,	1,	1,	0,	0,
@@ -91,6 +91,7 @@ void finish_node(struct job_token *handled_job, int finished_node);
 void claim_node(struct job_token *handled_job, int claimed_node);
 void signal_sequence_head(int node_to_signal, struct job_token *handled_job, sem_t *semaphore, int num_nodes, bool *precedence_matrix_pointer);
 void set_cpu(int cpu_num);
+bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer);
 
 void node_1_1();
 void node_1_2();
@@ -127,9 +128,9 @@ int main(void)
     char *message1 = "thread 1 ";
 
     pthread_create( &task_1_sequence_1_thread, NULL, sequence_1_1_function, (void*) message1);
-    //pthread_create( &task_1_sequence_2_thread, NULL, sequence_1_2_function, (void*) message1);
-    //pthread_create( &task_1_sequence_3_thread, NULL, sequence_1_3_function, (void*) message1);
-    //pthread_create( &task_1_sequence_4_thread, NULL, sequence_1_4_function, (void*) message1);
+    pthread_create( &task_1_sequence_2_thread, NULL, sequence_1_2_function, (void*) message1);
+    pthread_create( &task_1_sequence_3_thread, NULL, sequence_1_3_function, (void*) message1);
+    pthread_create( &task_1_sequence_4_thread, NULL, sequence_1_4_function, (void*) message1);
 
 
     struct job_token *start_pointer = &task_1_jobs_queue[0];
@@ -137,9 +138,20 @@ int main(void)
 
     start = clock();
 
-    //initialize_new_job(NULL, start_pointer);
+    initialize_new_job(NULL, start_pointer);
+    
+    
+    sem_post(&task_1_semaphore);
 
     syslog(LOG_INFO, "Started job of task 1 at:, %f", (float)start);
+    
+
+    pthread_join(task_1_sequence_1_thread, NULL);
+    pthread_join(task_1_sequence_2_thread, NULL);
+    pthread_join(task_1_sequence_3_thread, NULL);
+    pthread_join(task_1_sequence_4_thread, NULL);
+        
+    
     closelog();
 
 }
@@ -148,17 +160,16 @@ int main(void)
 
 void *sequence_1_1_function(void *arguments)
 {
-    printf("thread started\n");
-    //set_cpu(1);
-
-    printf("cpu set\n");
+    set_cpu(0);
 
     struct job_token *old_job = NULL;
     struct job_token *queue_start = &task_1_jobs_queue[0];
     struct job_token *handled_job = NULL;
     bool pre_flag= false;
+    bool exe_flag = false;
     bool *pre_pointer = task_1_precedence_constraints;
     clock_t current_time;
+    
 
     while(true)
     {
@@ -167,36 +178,50 @@ void *sequence_1_1_function(void *arguments)
 
         //Get pointer to the new job
         handled_job = GetNewJob(old_job, queue_start);
-
+        
+        
         //Start executing the first node
-        current_time = clock();
-        syslog(LOG_INFO, "Started execution of node 1 at:, %f", (float)start);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 1, sequence 1 at: %f", (float)current_time);
         claim_node(handled_job, 1);
         node_1_1();
         finish_node(handled_job, 1);
-        current_time = clock();
-        syslog(LOG_INFO, "Finished execution of node 1 at:, %f", (float)start);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 1, sequence 1 at: %f", (float)current_time);
+        
+        
+        
 
         //Signal other sequences
-        signal_sequence_head(3, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
         signal_sequence_head(4, handled_job, &task_1_sequence_3_semaphore, 7, pre_pointer);
-
+        signal_sequence_head(3, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
+        
         //Check if the next node can be executed
         pre_flag = check_precedence_constraints(7, pre_pointer, 2, handled_job);
         if(pre_flag == false)
         {
             //terminate the sequence
-            continue;
+            break;
+        }
+        exe_flag = check_if_node_in_execution(2, handled_job);
+        if(exe_flag == true)
+        {
+            break;
         }
 
 
         //Execute node
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 2, sequence 1 at: %f", (float)current_time);
         claim_node(handled_job, 2);
         node_1_2();
         finish_node(handled_job, 2);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 2, sequence 1 at: %f", (float)current_time);
+
 
         //Signal other sequences
-        signal_sequence_head(6, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
+        signal_sequence_head(6, handled_job, &task_1_sequence_4_semaphore, 7, pre_pointer);
 
 
         //Check if the next node can be executed
@@ -204,26 +229,47 @@ void *sequence_1_1_function(void *arguments)
         if(pre_flag == false)
         {   
             //terminate the sequence
-            continue;
+            break;
+        }
+        exe_flag = check_if_node_in_execution(5, handled_job);
+        if(exe_flag == true)
+        {
+            break;
         }
 
 
         //Execute node
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 5, sequence 1 at: %f", (float)current_time);
         claim_node(handled_job, 5);
         node_1_5();
         finish_node(handled_job, 5);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 5, sequence 1 at: %f", (float)current_time);
 
 
         pre_flag = check_precedence_constraints(7, pre_pointer, 7, handled_job);
         if(pre_flag == false)
         {
             //terminate the sequence
-            continue;
+            break;
+        }
+        exe_flag = check_if_node_in_execution(7, handled_job);
+        if(exe_flag == true)
+        {
+            break;
         }
 
+        //Execute node
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 7, sequence 1 at: %f", (float)current_time);
         claim_node(handled_job, 7);
         node_1_7();
         finish_node(handled_job, 7);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 7, sequence 1 at: %f", (float)current_time);
+        
+        break;
 
     }
     
@@ -232,28 +278,35 @@ void *sequence_1_1_function(void *arguments)
 
 void *sequence_1_2_function(void *arguments)
 {
-    set_cpu(2);
+    set_cpu(1);
 
     struct job_token *old_job = NULL;
     struct job_token *queue_start = &task_1_jobs_queue[0];
     struct job_token *handled_job = NULL;
     bool pre_flag= false;
+    bool exe_flag = false;
     bool *pre_pointer = task_1_precedence_constraints;
+    clock_t current_time;
 
     while(true)
     {
         sem_wait(&task_1_sequence_2_semaphore);
+        
 
         //Get pointer to the new job
         handled_job = GetNewJob(old_job, queue_start);
 
         //Start executing the first node
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 3, sequence 2 at: %f", (float)current_time);
         claim_node(handled_job, 3);
         node_1_3();
         finish_node(handled_job, 3);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 3, sequence 2 at: %f", (float)current_time);
 
         //Signal other sequences
-        signal_sequence_head(6, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
+        signal_sequence_head(6, handled_job, &task_1_sequence_4_semaphore, 7, pre_pointer);
 
 
         //Check if the next node can be executed
@@ -261,26 +314,46 @@ void *sequence_1_2_function(void *arguments)
         if(pre_flag == false)
         {   
             //terminate the sequence
-            continue;
+            break;
+        }
+        exe_flag = check_if_node_in_execution(5, handled_job);
+        if(exe_flag == true)
+        {
+            break;
         }
 
 
         //Execute node
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 5, sequence 2 at: %f", (float)current_time);
         claim_node(handled_job, 5);
         node_1_5();
         finish_node(handled_job, 5);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 5, sequence 2 at: %f", (float)current_time);
 
 
         pre_flag = check_precedence_constraints(7, pre_pointer, 7, handled_job);
         if(pre_flag == false)
         {
             //terminate the sequence
-            continue;
+            break;
+        }
+        exe_flag = check_if_node_in_execution(7, handled_job);
+        if(exe_flag == true)
+        {
+            break;
         }
 
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 7, sequence 2 at: %f", (float)current_time);
         claim_node(handled_job, 7);
         node_1_7();
         finish_node(handled_job, 7);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 7, sequence 2 at: %f", (float)current_time);
+        
+        break;
 
 
     }
@@ -289,13 +362,15 @@ void *sequence_1_2_function(void *arguments)
 
 void *sequence_1_3_function(void *arguments)
 {
-    set_cpu(3);
+    set_cpu(2);
 
     struct job_token *old_job = NULL;
     struct job_token *queue_start = &task_1_jobs_queue[0];
     struct job_token *handled_job = NULL;
     bool pre_flag= false;
+    bool exe_flag = false;
     bool *pre_pointer = task_1_precedence_constraints;
+    clock_t current_time;
 
     while(true)
     {
@@ -305,51 +380,79 @@ void *sequence_1_3_function(void *arguments)
         handled_job = GetNewJob(old_job, queue_start);
 
         //Start executing the first node
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 4, sequence 3 at: %f", (float)current_time);
         claim_node(handled_job, 4);
         node_1_4();
         finish_node(handled_job, 4);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 4, sequence 3 at: %f", (float)current_time);
+        
 
         //Signal other sequences
-        signal_sequence_head(6, handled_job, &task_1_sequence_2_semaphore, 7, pre_pointer);
+        signal_sequence_head(6, handled_job, &task_1_sequence_4_semaphore, 7, pre_pointer);
 
         //Check if the next node can be executed
         pre_flag = check_precedence_constraints(7, pre_pointer, 5, handled_job);
         if(pre_flag == false)
         {   
             //terminate the sequence
-            continue;
+            break;
         }
+        exe_flag = check_if_node_in_execution(5, handled_job);
+        if(exe_flag == true)
+        {
+            break;
+        }
+        
 
 
         //Execute node
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 5, sequence 3 at: %f", (float)current_time);
         claim_node(handled_job, 5);
         node_1_5();
         finish_node(handled_job, 5);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 5, sequence 3 at: %f", (float)current_time);
 
 
         pre_flag = check_precedence_constraints(7, pre_pointer, 7, handled_job);
         if(pre_flag == false)
         {
             //terminate the sequence
-            continue;
+            break;
+        }
+        exe_flag = check_if_node_in_execution(7, handled_job);
+        if(exe_flag == true)
+        {
+            break;
         }
 
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 7, sequence 3 at: %f", (float)current_time);
         claim_node(handled_job, 7);
         node_1_7();
         finish_node(handled_job, 7);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 7, sequence 3 at: %f", (float)current_time);
+        
+        break;
     }
 
 }
 
 void *sequence_1_4_function(void *arguments)
 {
-    set_cpu(4);
+    set_cpu(3);
 
     struct job_token *old_job = NULL;
     struct job_token *queue_start = &task_1_jobs_queue[0];
     struct job_token *handled_job = NULL;
     bool pre_flag= false;
+    bool exe_flag = false;
     bool *pre_pointer = task_1_precedence_constraints;
+    clock_t current_time;
 
     while(true)
     {
@@ -359,20 +462,36 @@ void *sequence_1_4_function(void *arguments)
         handled_job = GetNewJob(old_job, queue_start);
 
         //Start executing the first node
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 6, sequence 4 at: %f", (float)current_time);
         claim_node(handled_job, 6);
         node_1_6();
         finish_node(handled_job, 6);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 6, sequence 4 at: %f", (float)current_time);
 
         pre_flag = check_precedence_constraints(7, pre_pointer, 7, handled_job);
         if(pre_flag == false)
         {
             //terminate the sequence
-            continue;
+            break;
         }
+        exe_flag = check_if_node_in_execution(7, handled_job);
+        if(exe_flag == true)
+        {
+            break;
+        }
+        
 
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Started execution of task 1, node 7, sequence 4 at: %f", (float)current_time);
         claim_node(handled_job, 7);
         node_1_7();
         finish_node(handled_job, 7);
+        current_time = clock() - start;
+        syslog(LOG_INFO, "Finished execution of task 1, node 7, sequence 4 at: %f", (float)current_time);
+        
+        break;
     }
 }
 
@@ -477,7 +596,7 @@ bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_mat
     u_int32_t job_state_local = job_pointer->job_state & mask;
     bool *temp_bool_pointer = NULL;
 
-    for(int x = 0; x < (number_of_nodes-2); x++)
+    for(int x = 0; x < (number_of_nodes-1); x++)
     {
         u_int8_t temp_index = start_index + x;
         temp_bool_pointer = precedence_matrix_pointer + temp_index;
@@ -498,7 +617,7 @@ bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_mat
 
 void one_time_unit_workload()
 {
-    for (int i = 0; i < (0xFFFFFFF); i++);
+    for (int i = 0; i < (0xFFFFFF); i++);
 }
 
 void finish_node(struct job_token *handled_job, int finished_node)
@@ -535,13 +654,32 @@ void signal_sequence_head(int node_to_signal, struct job_token *handled_job, sem
     }
 }
 
+bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer)
+{
+    int mask = 1;
+    mask = mask << (node_number - 1);
+    u_int32_t local_execution_state = job_pointer->job_execution_state;
+    
+    local_execution_state = local_execution_state & mask;
+    
+    if(local_execution_state > 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+    
+}
+
 void set_cpu(int cpu_num)
 {
-   int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+   //int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
    cpu_set_t cpuset;
    CPU_ZERO(&cpuset);
    CPU_SET(cpu_num, &cpuset);  
-   int result = pthread_setaffinity_np(0, sizeof(cpu_set_t), &cpuset);
+   sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
 }
 
 
