@@ -17,6 +17,11 @@ void initialize_semaphores();
 
 int main(void) 
 {
+    struct timespec tim;
+    tim.tv_sec  = 1;
+    tim.tv_nsec = 500000000L;
+    
+    
     //Create an array for convolution
     create_workload();
     
@@ -40,8 +45,17 @@ int main(void)
 
 
     initialize_new_job(NULL, start_pointer, Q_SIZE, 1);
+    sem_post(&task_1_semaphore);
     
     
+    int bla = nanosleep(&tim , &tim);
+    
+    initialize_new_job(start_pointer, start_pointer, Q_SIZE, 1);
+    sem_post(&task_1_semaphore);
+    
+    int bla = nanosleep(&tim , &tim);
+    
+    initialize_new_job((start_pointer +1), start_pointer, Q_SIZE, 1);
     sem_post(&task_1_semaphore);
     
 

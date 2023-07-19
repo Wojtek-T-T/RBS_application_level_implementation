@@ -59,8 +59,12 @@ void set_cpu(int cpu_num)
 
 
 
-struct job_token* GetNewJob(struct job_token *old_job_ptr, struct job_token *start_ptr, int queue_size)
+struct job_token* GetNewJob(struct job_token *old_job_ptr, struct job_token *start_ptr, int queue_size, sem_t *semaphore)
 {
+	//Wait till a new job is released
+	sem_wait(semaphore);
+	
+	
     if(old_job_ptr == NULL)
     {
         return start_ptr;
@@ -143,7 +147,7 @@ bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_mat
     return true;
 }
 
-void finish_node(struct job_token *job, int finished_node)
+void finish_node(struct job_token *job, int finished_node, int sequence_id)
 {
     int mask = 1;
     mask = mask << (finished_node - 1);
@@ -155,7 +159,7 @@ void finish_node(struct job_token *job, int finished_node)
     pthread_mutex_unlock(&job->job_lock);
     
     clock_t time = clock();
-    log_info(job->task_id, 0, finished_node, job->job_id, time, NODE_EXECUTION_FINISHED);
+    log_info(job->task_id, sequence_id, finished_node, job->job_id, time, NODE_EXECUTION_FINISHED);
 }
 
 bool claim_node(struct job_token *job, int claimed_node, bool *precedence_matrix_pointer, u_int8_t number_of_nodes, int seq)
