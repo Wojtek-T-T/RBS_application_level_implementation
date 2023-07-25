@@ -4,18 +4,18 @@
 #include "rbs_lib.h"
 #include "workload.h"
 
+#define Q_SIZE 10
 
-
-#define Q_SIZE 3
-
-#define task_1_nodes 7
-#define task_2_nodes 5
+#define NR_NODES_T1 7
+#define NR_NODES_T2 5
 
 #define NR_SEQ_T1 4
 #define NR_SEQ_T2 3
 
 
 void *(*seq_func_ptr_t1[NR_SEQ_T1])();
+
+void (*nodes_func_ptr_t1[NR_NODES_T1])();
 
 
 bool task_1_precedence_constraints[36];

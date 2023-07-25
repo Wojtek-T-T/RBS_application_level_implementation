@@ -23,95 +23,66 @@ bool task_2_precedence_constraints[16] =
 
 void *(*seq_func_ptr_t1[NR_SEQ_T1])() = {sequence_1_1_function, sequence_1_2_function, sequence_1_3_function, sequence_1_4_function};
 
+void (*nodes_func_ptr_t1[NR_NODES_T1])() = {node_1_1, node_1_2, node_1_3, node_1_4, node_1_5, node_1_6, node_1_7 };
+
 
 void *sequence_1_1_function(void *arguments)
 {
     set_cpu(0);
-
-    struct job_token *old_job = NULL;
-    struct job_token *queue_start = &task_1_jobs_queue[0];
-    struct job_token *current_job = NULL;
-    bool *precedence_matrix = task_1_precedence_constraints;
     
-
+    struct sequence_data *seq_data = (struct sequence_data*) arguments;
+ 
     while(true)
     {
 		
-        //Get pointer to the new job
-        current_job = GetNewJob(old_job, queue_start, Q_SIZE, &task_1_semaphore);
+		//Wait for release of a new job
+		WaitNextJob(seq_data);
         
         
-         //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 1, precedence_matrix, 7, 1) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 1) != 0)
         {
-			//Start executing the first node
-			node_1_1();
-			finish_node(current_job, 1, 1);			
+			TerminateSequence(seq_data);
+			continue;
         }
-        else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;		
-		}
+
         
       
         //Signal other sequences
-        signal_sequence_head(4, current_job, &task_1_sequence_3_semaphore, 7, precedence_matrix);
-        signal_sequence_head(3, current_job, &task_1_sequence_2_semaphore, 7, precedence_matrix);
+        signal_sequence_head(4, seq_data->current_job, &task_1_sequence_3_semaphore, 7, seq_data->precedence_matrix);
+        signal_sequence_head(3, seq_data->current_job, &task_1_sequence_2_semaphore, 7, seq_data->precedence_matrix);
         
         
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 2, precedence_matrix, 7, 1) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 2) != 0)
         {
-			//Execute node
-			node_1_2();
-			finish_node(current_job, 2, 1);			
+			TerminateSequence(seq_data);
+			continue;
         }
-        else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
-		}
 
 
         //Signal other sequences
-        signal_sequence_head(6, current_job, &task_1_sequence_4_semaphore, 7, precedence_matrix);
+        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->precedence_matrix);
 
 
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 5, precedence_matrix, 7, 1) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 5) != 0)
         {
-			//Execute node
-			node_1_5();
-			finish_node(current_job, 5, 1);			
+			TerminateSequence(seq_data);
+			continue;
         }
-        else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
-		}	
 		
 
 
 
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 7, precedence_matrix, 7, 1) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 7) != 0)
         {
-			//Execute node
-			node_1_7();
-			finish_node(current_job, 7, 1);			
+			TerminateSequence(seq_data);
+			continue;
         }
-        else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
-		}
 		
-		old_job = current_job;
+		TerminateSequence(seq_data);
 
     }
     
@@ -122,67 +93,43 @@ void *sequence_1_2_function(void *arguments)
 {
 	//Set CPU
     set_cpu(1);
-
-    struct job_token *old_job = NULL;
-    struct job_token *queue_start = &task_1_jobs_queue[0];
-    struct job_token *current_job = NULL;
-    bool *precedence_matrix = task_1_precedence_constraints;
+    
+    struct sequence_data *seq_data = (struct sequence_data*) arguments;
 
     while(true)
     {
-        //Get pointer to the new job
-        current_job = GetNewJob(old_job, queue_start, Q_SIZE, &task_1_sequence_2_semaphore);
+		//Wait for release of a new job
+		WaitNextJob(seq_data);
         
        
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 3, precedence_matrix, 7, 2) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 3) != 0)
         {
-			//Execute node
-			node_1_3();
-			finish_node(current_job, 3, 2);
-		}
-		else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
+			TerminateSequence(seq_data);
+			continue;
         }
         
 
         //Signal other sequences
-        signal_sequence_head(6, current_job, &task_1_sequence_4_semaphore, 7, precedence_matrix);
+        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->precedence_matrix);
 
         
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 5, precedence_matrix, 7, 2) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 5) != 0)
         {
-			//Execute node
-			node_1_5();
-			finish_node(current_job, 5, 2);
-		}
-		else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
+			TerminateSequence(seq_data);
+			continue;
         }
 
 
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 7, precedence_matrix, 7, 2) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 7) != 0)
         {
-			//Execute node
-			node_1_7();
-			finish_node(current_job, 7, 2);
-		}
-		else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
+			TerminateSequence(seq_data);
+			continue;
         }
         
-		old_job = current_job;
+		TerminateSequence(seq_data);
 
     }
     
@@ -191,67 +138,44 @@ void *sequence_1_2_function(void *arguments)
 void *sequence_1_3_function(void *arguments)
 {
     set_cpu(2);
+    
+    struct sequence_data *seq_data = (struct sequence_data*) arguments;
 
-    struct job_token *old_job = NULL;
-    struct job_token *queue_start = &task_1_jobs_queue[0];
-    struct job_token *current_job = NULL;
-    bool *precedence_matrix = task_1_precedence_constraints;
 
     while(true)
     {
 
-        //Get pointer to the new job
-        current_job = GetNewJob(old_job, queue_start, Q_SIZE, &task_1_sequence_3_semaphore);
+		//Wait for release of a new job
+		WaitNextJob(seq_data);
         
         
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 4, precedence_matrix, 7, 3) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 4) != 0)
         {
-			//Execute node
-			node_1_4();
-			finish_node(current_job, 4, 3);
-		}
-		else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
+			TerminateSequence(seq_data);
+			continue;
         }
         
 
         //Signal other sequences
-        signal_sequence_head(6, current_job, &task_1_sequence_4_semaphore, 7, precedence_matrix);
+        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->precedence_matrix);
 
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 5, precedence_matrix, 7, 3) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 5) != 0)
         {
-			//Execute node
-			node_1_5();
-			finish_node(current_job, 5, 3);
-		}
-		else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
+			TerminateSequence(seq_data);
+			continue;
         }
 
 
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 7, precedence_matrix, 7, 3) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 7) != 0)
         {
-			//Execute node
-			node_1_7();
-			finish_node(current_job, 7, 3);
-		}
-		else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
+			TerminateSequence(seq_data);
+			continue;
         }
         
-        old_job = current_job;
+        TerminateSequence(seq_data);
     }
 
 }
@@ -259,47 +183,30 @@ void *sequence_1_3_function(void *arguments)
 void *sequence_1_4_function(void *arguments)
 {
     set_cpu(3);
-
-    struct job_token *old_job = NULL;
-    struct job_token *queue_start = &task_1_jobs_queue[0];
-    struct job_token *current_job = NULL;
-    bool *precedence_matrix = task_1_precedence_constraints;
+    
+    struct sequence_data *seq_data = (struct sequence_data*) arguments;
 
     while(true)
     {
 
-        //Get pointer to the new job
-        current_job = GetNewJob(current_job, queue_start, Q_SIZE, &task_1_sequence_4_semaphore);
+		//Wait for release of a new job
+		WaitNextJob(seq_data);
         
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 6, precedence_matrix, 7, 4) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 6) != 0)
         {
-			//Execute node
-			node_1_6();
-			finish_node(current_job, 6, 4);
-		}
-		else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
+			TerminateSequence(seq_data);
+			continue;
         }
 
-        //Try to claim node. Go on if succesfull and terminate sequence if not.
-        if(claim_node(current_job, 7, precedence_matrix, 7, 4) == true)
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 7) != 0)
         {
-			//Execute node
-			node_1_7();
-			finish_node(current_job, 7, 4);
-		}
-		else
-        {
-            //Terminate sequence
-            old_job = current_job;
-            continue;
+			TerminateSequence(seq_data);
+			continue;
         }
         
-        old_job = current_job;
+        TerminateSequence(seq_data);
         
        
     }

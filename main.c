@@ -22,41 +22,54 @@ int main(void)
     tim.tv_nsec = 500000000L;
     
     
+    struct task_data task1_data;
+    struct sequence_data t1_s1_data;
+    struct sequence_data t1_s2_data;
+    struct sequence_data t1_s3_data;
+    struct sequence_data t1_s4_data;
+    
+    
+    
     //Create an array for convolution
     create_workload();
     
     //Initialize RBS
     initialize_rbs();
     
-    //Initialize the semaphores guarding the sequences
-    initialize_semaphores();
+    //Initialize task 1
+    InitializeTask(&task1_data, 1, NR_NODES_T1, Q_SIZE, &task_1_jobs_queue[0], task_1_precedence_constraints, &task_1_semaphore, nodes_func_ptr_t1);
+    
+    //initialize sequences
+    InitializeSequence(&task1_data, &t1_s1_data, 1, &task_1_sequence_1_thread, &task_1_semaphore, seq_func_ptr_t1[0]);
+    InitializeSequence(&task1_data, &t1_s2_data, 2, &task_1_sequence_2_thread, &task_1_sequence_2_semaphore, seq_func_ptr_t1[1]);
+    InitializeSequence(&task1_data, &t1_s3_data, 3, &task_1_sequence_3_thread, &task_1_sequence_3_semaphore, seq_func_ptr_t1[2]);
+    InitializeSequence(&task1_data, &t1_s4_data, 4, &task_1_sequence_4_thread, &task_1_sequence_4_semaphore, seq_func_ptr_t1[3]);
+    
+    ReleaseNewJob(&task1_data);
 
-
-
-    char *message1 = "thread 1 ";
-
-    pthread_create( &task_1_sequence_1_thread, NULL, seq_func_ptr_t1[0], (void*) message1);
-    pthread_create( &task_1_sequence_2_thread, NULL, sequence_1_2_function, (void*) message1);
-    pthread_create( &task_1_sequence_3_thread, NULL, sequence_1_3_function, (void*) message1);
-    pthread_create( &task_1_sequence_4_thread, NULL, sequence_1_4_function, (void*) message1);
-
-
-    struct job_token *start_pointer = &task_1_jobs_queue[0];
-
-
-    initialize_new_job(NULL, start_pointer, Q_SIZE, 1);
-    sem_post(&task_1_semaphore);
+    
+    /*
     
     
     int bla = nanosleep(&tim , &tim);
     
-    initialize_new_job(start_pointer, start_pointer, Q_SIZE, 1);
+    initialize_new_job(start_pointer, start_pointer, Q_SIZE, 1, 2);
     sem_post(&task_1_semaphore);
     
-    int bla = nanosleep(&tim , &tim);
     
-    initialize_new_job((start_pointer +1), start_pointer, Q_SIZE, 1);
+    bla = nanosleep(&tim , &tim);
+    
+    
+    initialize_new_job(start_pointer + 1, start_pointer, Q_SIZE, 1, 3);
     sem_post(&task_1_semaphore);
+    
+    
+    bla = nanosleep(&tim , &tim);
+    
+    initialize_new_job(start_pointer + 2, start_pointer, Q_SIZE, 1, 4);
+    sem_post(&task_1_semaphore);
+    
+    */
     
 
     pthread_join(task_1_sequence_1_thread, NULL);
@@ -67,20 +80,6 @@ int main(void)
     
     closelog();
 
-}
-
-
-
-void initialize_semaphores()
-{
-    sem_init(&task_1_semaphore, 0, 0);
-    sem_init(&task_1_sequence_2_semaphore, 0, 0);
-    sem_init(&task_1_sequence_3_semaphore, 0, 0);
-    sem_init(&task_1_sequence_4_semaphore, 0, 0);
-
-    sem_init(&task_2_semaphore, 0, 0);
-    sem_init(&task_2_sequence_2_semaphore, 0, 0);
-    sem_init(&task_2_sequence_3_semaphore, 0, 0);
 }
 
 
