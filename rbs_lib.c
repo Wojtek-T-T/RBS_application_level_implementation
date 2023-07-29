@@ -1,59 +1,52 @@
 #include "rbs_lib.h"
 
 
-void InitializeSequence(struct task_data *taskDATA, struct sequence_data *sequenceDATA, int sequenceID, pthread_t *thread, sem_t *semaphore, void *(*func)())
+void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, sem_t *semaphore, void *(*func)())
 {
-	sequenceDATA->current_job = NULL;
-	sequenceDATA->previous_job = NULL;
-	sequenceDATA->queue_address = taskDATA->queue_address;
+	//Allocate memory for sequence data
+	struct sequence_data *sequenceDATA = malloc(sizeof(struct sequence_data));
 	
-	sequenceDATA->semaphore = semaphore;
-	
-	sequenceDATA->precedence_matrix = taskDATA->precedence_matrix;
-	
-	sequenceDATA->task_id = taskDATA->task_id;
+	sequenceDATA->task = taskDATA;
 	sequenceDATA->sequence_id = sequenceID;
+	sequenceDATA->semaphore = semaphore;
+	sequenceDATA->current_job = taskDATA->last_added_job;
 	
-	sequenceDATA->queue_size = taskDATA->queue_size;
-	
-	sequenceDATA->number_of_nodes = taskDATA->number_of_nodes;
-	
-	
-	for(int i = 0; i < (taskDATA->number_of_nodes); i++)
-	{
-		sequenceDATA->workload[i] = taskDATA->func[i];
-	}
-	
-	
+	//Initialize semaphore
 	sem_init(semaphore, 0, 0);
 	
+	//Initialize thread
     pthread_create(thread, NULL, func, (void*) sequenceDATA);
  
-	
 }
 
 void initialize_rbs()
 {
+	#ifdef LOG_DATA
+	printf("log\n");
 	openlog("RBS_IMPLEMENTATION_LOG", LOG_PID|LOG_CONS, LOG_USER);
+	#endif
 }
 
-void InitializeTask(struct task_data *taskDATA, int taskID, int number_of_nodes, int queueSIZE, struct job_token *queueADDRESS, bool *precedenceMATRIX, sem_t *semaphores_address, void (*workload[])())
+struct task_data *InitializeTask(int taskID, bool *precedenceMATRIX, int number_of_nodes, sem_t *semaphores_address, void (*workload[])())
 {
-	taskDATA->queue_size = queueSIZE;
+	//allocate memory for the data structure
+	struct task_data *taskDATA = malloc(sizeof(struct task_data));
+	
 	taskDATA->task_id = taskID;
 	taskDATA->job_counter = 0;
-	taskDATA->queue_address = queueADDRESS;
-	taskDATA->last_released_job = NULL;
 	taskDATA->precedence_matrix = precedenceMATRIX;
 	taskDATA->number_of_nodes = number_of_nodes;
-	
 	taskDATA->sem = semaphores_address;
+	taskDATA->last_added_job = malloc(sizeof(struct job_token));
+	taskDATA->last_added_job->previous_job = NULL;
 	
+	//Copy functions pointers
 	for(int i = 0; i < number_of_nodes; i++)
 	{
 		taskDATA->func[i] = workload[i];
 	}
 	
+	return taskDATA;
 	
 }
 
@@ -99,70 +92,50 @@ void WaitNextJob(struct sequence_data *sequenceDATA)
 	//Wait till a new job is released
 	sem_wait(sequenceDATA->semaphore);
 	
-	
-    if(sequenceDATA->previous_job == NULL)
-    {
-        sequenceDATA->current_job = sequenceDATA->queue_address;
-        return;
-        
-    }
+	//Update pointer
+    sequenceDATA->current_job = sequenceDATA->current_job->next_job;
 
-
-    if((sequenceDATA->queue_address + (sequenceDATA->queue_size - 1)) == sequenceDATA->previous_job)
-    {
-        sequenceDATA->current_job = sequenceDATA->queue_address;
-        return;
-    }
-    else
-    {
-        sequenceDATA->current_job = sequenceDATA->previous_job + 1;
-        return;
-    }
     
 }
 
 void ReleaseNewJob(struct task_data *taskDATA)
 {
-    struct job_token *new_job = NULL;
-    
-    if(taskDATA->last_released_job == NULL)
-    {
-        new_job = taskDATA->queue_address;
-        
-    }
-    else if((taskDATA->queue_address + (taskDATA->queue_size - 1)) == taskDATA->last_released_job)
-    {
-        new_job = taskDATA->queue_address;
-    }
-    else
-    {
-        new_job = (taskDATA->last_released_job) + 1;
-    }
-    
-    taskDATA->job_counter = taskDATA->job_counter + 1;
+	//Increase the jobs counter
+	taskDATA->job_counter = taskDATA->job_counter + 1;
+	
+	//allocate memory for new job token
+    struct job_token *new_job = malloc(sizeof(struct job_token));
 
-	new_job->task_id = taskDATA->task_id;
 	new_job->job_id = taskDATA->job_counter;
     new_job->job_execution_state = 0;
     new_job->job_state = 0;
+    new_job->previous_job = taskDATA->last_added_job;
     
-    
-    
+    //initialize job data lock
     pthread_mutex_init(&new_job->job_lock, NULL);
     
+    //update the pointer to the next job
+    taskDATA->last_added_job->next_job = new_job;
     
+    //post semaphore
     sem_post(taskDATA->sem);
     
+    #ifdef LOG_DATA
     clock_t time = clock();
-    log_info(new_job->task_id, 0, new_job->job_id, new_job->job_id, time, NEW_JOB_RELEASED);
+    log_info(taskDATA->task_id, 0, new_job->job_id, new_job->job_id, time, NEW_JOB_RELEASED);
+    #endif
     
-    taskDATA->last_released_job = new_job;
+    //update the pointer to the last job
+    taskDATA->last_added_job = new_job;
     
 }
 
 void finish_job(struct job_token *finished_job)
 {
     pthread_mutex_destroy(&finished_job->job_lock);
+    
+    //Free memory
+    free(finished_job->previous_job);
 }
 
 bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_matrix_pointer, u_int8_t node_number, struct job_token *job_pointer)
@@ -197,19 +170,21 @@ bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_mat
     return true;
 }
 
-void finish_node(struct job_token *job, int finished_node, int sequence_id)
+void finish_node(struct sequence_data *sequenceDATA, int finished_node)
 {
     int mask = 1;
     mask = mask << (finished_node - 1);
 
-    pthread_mutex_lock(&job->job_lock);
+    pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
 
-    job->job_state = job->job_state | mask;
+    sequenceDATA->current_job->job_state = sequenceDATA->current_job->job_state | mask;
 
-    pthread_mutex_unlock(&job->job_lock);
+    pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
     
+    #ifdef LOG_DATA
     clock_t time = clock();
-    log_info(job->task_id, sequence_id, finished_node, job->job_id, time, NODE_EXECUTION_FINISHED);
+    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, finished_node, sequenceDATA->current_job->job_id, time, NODE_EXECUTION_FINISHED);
+    #endif
 }
 
 int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
@@ -219,7 +194,7 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
      
      
     //Check if the next node can be executed
-    if((check_precedence_constraints(sequenceDATA->number_of_nodes, sequenceDATA->precedence_matrix, node, sequenceDATA->current_job)) == false)
+    if((check_precedence_constraints(sequenceDATA->task->number_of_nodes, sequenceDATA->task->precedence_matrix, node, sequenceDATA->current_job)) == false)
     {
         pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
         return 1;
@@ -238,18 +213,26 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
     sequenceDATA->current_job->job_execution_state = sequenceDATA->current_job->job_execution_state | mask;
     
     
-    //Log and release lock
+    //Save clock cycles
+    #ifdef LOG_DATA
 	clock_t time = clock();
+	#endif
+	
+	//Unlock
     pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
-    log_info(sequenceDATA->current_job->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, time, NODE_EXECUTION_STARTED);
+    
+    //Log event
+    #ifdef LOG_DATA
+    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, time, NODE_EXECUTION_STARTED);
+    #endif
    
     
     //Execute Node
-    sequenceDATA->workload[(node-1)]();
+    sequenceDATA->task->func[(node-1)]();
     
     
     //Mark node as finished
-    finish_node(sequenceDATA->current_job, node, sequenceDATA->sequence_id);	
+    finish_node(sequenceDATA, node);	
     
     return 0;
 }
@@ -281,10 +264,4 @@ bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_poin
         return false;
     }
     
-}
-
-
-void TerminateSequence(struct sequence_data *sequenceDATA)
-{
-	sequenceDATA->previous_job = sequenceDATA->current_job;
 }

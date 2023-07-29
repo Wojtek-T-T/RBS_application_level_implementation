@@ -4,8 +4,6 @@
 #include "rbs_lib.h"
 #include "workload.h"
 
-#define Q_SIZE 10
-
 #define NR_NODES_T1 7
 #define NR_NODES_T2 5
 
@@ -25,7 +23,6 @@ bool task_2_precedence_constraints[16];
 //semaphores
 sem_t semaphores_T1[NR_SEQ_T1];
 sem_t semaphores_T2[NR_SEQ_T2];
-
 
 
 sem_t task_1_semaphore;
@@ -51,10 +48,6 @@ pthread_t task_2_sequence_1_thread;
 pthread_t task_2_sequence_2_thread;
 pthread_t task_2_sequence_3_thread;
 
-
-//Tasks queues
-struct job_token task_1_jobs_queue[Q_SIZE];
-struct job_token task_2_jobs_queue[Q_SIZE];
 
 
 //Sequence functions

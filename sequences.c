@@ -42,47 +42,40 @@ void *sequence_1_1_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 1) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
 
         
       
         //Signal other sequences
-        signal_sequence_head(4, seq_data->current_job, &task_1_sequence_3_semaphore, 7, seq_data->precedence_matrix);
-        signal_sequence_head(3, seq_data->current_job, &task_1_sequence_2_semaphore, 7, seq_data->precedence_matrix);
+        signal_sequence_head(4, seq_data->current_job, &task_1_sequence_3_semaphore, 7, seq_data->task->precedence_matrix);
+        signal_sequence_head(3, seq_data->current_job, &task_1_sequence_2_semaphore, 7, seq_data->task->precedence_matrix);
         
         
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 2) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
 
 
         //Signal other sequences
-        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->precedence_matrix);
+        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->task->precedence_matrix);
 
 
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 5) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
 		
-
-
 
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 7) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
 		
-		TerminateSequence(seq_data);
 
     }
     
@@ -105,19 +98,17 @@ void *sequence_1_2_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 3) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
         
 
         //Signal other sequences
-        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->precedence_matrix);
+        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->task->precedence_matrix);
 
         
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 5) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
 
@@ -125,11 +116,8 @@ void *sequence_1_2_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 7) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
-        
-		TerminateSequence(seq_data);
 
     }
     
@@ -152,18 +140,16 @@ void *sequence_1_3_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 4) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
         
 
         //Signal other sequences
-        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->precedence_matrix);
+        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->task->precedence_matrix);
 
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 5) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
 
@@ -171,11 +157,9 @@ void *sequence_1_3_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 7) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
         
-        TerminateSequence(seq_data);
     }
 
 }
@@ -195,19 +179,14 @@ void *sequence_1_4_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 6) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
         }
 
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 7) != 0)
         {
-			TerminateSequence(seq_data);
 			continue;
-        }
-        
-        TerminateSequence(seq_data);
-        
+        }      
        
     }
 }

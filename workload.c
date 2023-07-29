@@ -132,6 +132,8 @@ void node_1_7()
     
     one_time_unit_workload(ptr);
     one_time_unit_workload(ptr);
+    
+    printf("hallo\n");
 }
 
 void node_2_1()
