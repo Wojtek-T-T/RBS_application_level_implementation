@@ -21,9 +21,19 @@ bool task_2_precedence_constraints[16] =
 };
 
 
+int task_1_sequence_heads[NR_SEQ_T1-1] = {3, 4, 6};
+
+int task_2_sequence_heads[NR_SEQ_T2-1] = {3, 4};
+
+
 void *(*seq_func_ptr_t1[NR_SEQ_T1])() = {sequence_1_1_function, sequence_1_2_function, sequence_1_3_function, sequence_1_4_function};
 
 void (*nodes_func_ptr_t1[NR_NODES_T1])() = {node_1_1, node_1_2, node_1_3, node_1_4, node_1_5, node_1_6, node_1_7 };
+
+
+void *(*seq_func_ptr_t2[NR_SEQ_T2])() = {sequence_2_1_function, sequence_2_2_function, sequence_2_3_function};
+
+void (*nodes_func_ptr_t2[NR_NODES_T2])() = {node_2_1, node_2_2, node_2_3, node_2_4, node_2_5 };
 
 
 void *sequence_1_1_function(void *arguments)
@@ -48,8 +58,8 @@ void *sequence_1_1_function(void *arguments)
         
       
         //Signal other sequences
-        signal_sequence_head(4, seq_data->current_job, &task_1_sequence_3_semaphore, 7, seq_data->task->precedence_matrix);
-        signal_sequence_head(3, seq_data->current_job, &task_1_sequence_2_semaphore, 7, seq_data->task->precedence_matrix);
+        //SignalSequenceMan(seq_data, 4, &semaphores_T1[2]);
+        //SignalSequenceMan(seq_data, 3, &semaphores_T1[1]);
         
         
          //Try to execute node, terminate if precedence constraints not fullfield.
@@ -60,7 +70,7 @@ void *sequence_1_1_function(void *arguments)
 
 
         //Signal other sequences
-        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->task->precedence_matrix);
+        //SignalSequenceMan(seq_data, 6, &semaphores_T1[3]);
 
 
          //Try to execute node, terminate if precedence constraints not fullfield.
@@ -76,6 +86,7 @@ void *sequence_1_1_function(void *arguments)
 			continue;
         }
 		
+		FinishJob(seq_data);
 
     }
     
@@ -103,7 +114,7 @@ void *sequence_1_2_function(void *arguments)
         
 
         //Signal other sequences
-        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->task->precedence_matrix);
+        //SignalSequenceMan(seq_data, 6, &semaphores_T1[3]);
 
         
          //Try to execute node, terminate if precedence constraints not fullfield.
@@ -118,6 +129,8 @@ void *sequence_1_2_function(void *arguments)
         {
 			continue;
         }
+        
+        FinishJob(seq_data);
 
     }
     
@@ -145,7 +158,7 @@ void *sequence_1_3_function(void *arguments)
         
 
         //Signal other sequences
-        signal_sequence_head(6, seq_data->current_job, &task_1_sequence_4_semaphore, 7, seq_data->task->precedence_matrix);
+        //SignalSequenceMan(seq_data, 6, &semaphores_T1[3]);
 
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 5) != 0)
@@ -160,6 +173,8 @@ void *sequence_1_3_function(void *arguments)
 			continue;
         }
         
+        FinishJob(seq_data);
+        
     }
 
 }
@@ -169,7 +184,8 @@ void *sequence_1_4_function(void *arguments)
     set_cpu(3);
     
     struct sequence_data *seq_data = (struct sequence_data*) arguments;
-
+    
+   
     while(true)
     {
 
@@ -186,18 +202,47 @@ void *sequence_1_4_function(void *arguments)
         if(TryExecuteNode(seq_data, 7) != 0)
         {
 			continue;
-        }      
+        }
+        
+        FinishJob(seq_data);      
        
     }
 }
 
 void *sequence_2_1_function(void *arguments)
 {
-
+    set_cpu(0);
+    
+    struct sequence_data *seq_data = (struct sequence_data*) arguments;
 
     while(true)
     {
-        sem_wait(&task_2_semaphore);
+		//Wait for release of a new job
+		WaitNextJob(seq_data);
+        
+       
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 1) != 0)
+        {
+			continue;
+        }
+        
+        
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 2) != 0)
+        {
+			continue;
+        }
+
+
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 5) != 0)
+        {
+			continue;
+        }
+        
+        FinishJob(seq_data);		
+       
     }
     
 
@@ -205,17 +250,61 @@ void *sequence_2_1_function(void *arguments)
 
 void *sequence_2_2_function(void *arguments)
 {
+	set_cpu(1);
+    
+    struct sequence_data *seq_data = (struct sequence_data*) arguments;
+    
     while(true)
     {
-        sem_wait(&task_2_sequence_2_semaphore);
+ 		//Wait for release of a new job
+		WaitNextJob(seq_data);
+        
+       
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 3) != 0)
+        {
+			continue;
+        }
+       
+
+
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 5) != 0)
+        {
+			continue;
+        }
+        
+        FinishJob(seq_data);	       
     }
 }
 
 void *sequence_2_3_function(void *arguments)
 {
+	set_cpu(2);
+    
+    struct sequence_data *seq_data = (struct sequence_data*) arguments;
+    
     while(true)
     {
-        sem_wait(&task_2_sequence_3_semaphore);
+  		//Wait for release of a new job
+		WaitNextJob(seq_data);
+        
+       
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 4) != 0)
+        {
+			continue;
+        }
+       
+
+
+         //Try to execute node, terminate if precedence constraints not fullfield.
+        if(TryExecuteNode(seq_data, 5) != 0)
+        {
+			continue;
+        }
+        
+        FinishJob(seq_data);       
     }
 
 }

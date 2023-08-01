@@ -17,6 +17,14 @@ volatile u_int32_t conv_array_t1_n6[10000];
 volatile u_int32_t conv_array_t1_n7[10000];
 
 
+volatile u_int32_t conv_array_t2_n1[10000];
+volatile u_int32_t conv_array_t2_n2[10000];
+volatile u_int32_t conv_array_t2_n3[10000];
+volatile u_int32_t conv_array_t2_n4[10000];
+volatile u_int32_t conv_array_t2_n5[10000];
+
+
+
 
 void create_workload();
 void one_time_unit_workload(volatile u_int32_t *save_place);

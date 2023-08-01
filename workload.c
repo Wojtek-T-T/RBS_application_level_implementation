@@ -11,6 +11,13 @@ void create_workload()
         conv_array_t1_n5[p] = p+22; 
         conv_array_t1_n6[p] = p+23; 
         conv_array_t1_n7[p] = p+24; 
+        
+        
+        conv_array_t2_n1[p] = p+8; 
+        conv_array_t2_n2[p] = p+9; 
+        conv_array_t2_n3[p] = p+10; 
+        conv_array_t2_n4[p] = p+12; 
+        conv_array_t2_n5[p] = p+28; 
     }
  }
 
@@ -132,31 +139,43 @@ void node_1_7()
     
     one_time_unit_workload(ptr);
     one_time_unit_workload(ptr);
-    
-    printf("hallo\n");
 }
 
 void node_2_1()
 {
+	volatile u_int32_t *ptr = &conv_array_t2_n1[0];
+	one_time_unit_workload(ptr);
+    one_time_unit_workload(ptr);
 
 }
 
 void node_2_2()
 {
+	volatile u_int32_t *ptr = &conv_array_t2_n2[0];
+	one_time_unit_workload(ptr);
+    one_time_unit_workload(ptr);
 
 }
 
 void node_2_3()
 {
+	volatile u_int32_t *ptr = &conv_array_t2_n3[0];
+	one_time_unit_workload(ptr);
+    one_time_unit_workload(ptr);
 
 }
 
 void node_2_4()
 {
-
+	volatile u_int32_t *ptr = &conv_array_t2_n4[0];
+	one_time_unit_workload(ptr);
+    one_time_unit_workload(ptr);
 }
 
 void node_2_5()
 {
+	volatile u_int32_t *ptr = &conv_array_t2_n4[0];
+	one_time_unit_workload(ptr);
+    one_time_unit_workload(ptr);
 
 }

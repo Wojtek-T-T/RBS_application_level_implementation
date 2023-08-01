@@ -15,6 +15,9 @@
 #include <sched.h>
 #include <syslog.h>
 
+#define LOG_DATA
+#define AUTO_SIGNAL
+
 
 //LOG codes
 #define NODE_EXECUTION_STARTED 0 
@@ -53,9 +56,11 @@ struct task_data
 {
 	int task_id;
 	int number_of_nodes;
+	int number_of_sequences;
 	int job_counter;
 	bool *precedence_matrix;
-	sem_t *sem;
+	int *sequence_heads;
+	sem_t *sequence_guards;
 	struct job_token *last_added_job;
 	
 	void (*func[100])();
@@ -64,7 +69,7 @@ struct task_data
 	
 
 
-void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, sem_t *semaphore, void *(*func)());
+void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)());
 
 
 
@@ -81,9 +86,7 @@ void initialize_rbs();
  * RETURN TYPE:
  * 		struct task_data: pointer to the data structure containing the data of the initialized task
  */
-struct task_data *InitializeTask(int taskID, bool *precedenceMATRIX, int number_of_nodes, sem_t *semaphores_address, void (*workload[])());
-
-
+struct task_data *InitializeTask(int taskID, bool *precedenceMATRIX, int *sequenceHEADS, int number_of_nodes, int number_of_sequences, sem_t *semaphores_address, void (*workload[])());
 
 void log_info(int task, int sequence, int node, int job, clock_t time_stamp, int event);
 
@@ -93,15 +96,17 @@ void WaitNextJob(struct sequence_data *sequenceDATA);
 
 void ReleaseNewJob(struct task_data *taskDATA);
 
-void finish_job(struct job_token *finished_job);
+void FinishJob(struct sequence_data *sequenceDATA);
 
-bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_matrix_pointer, u_int8_t node_number, struct job_token *job_pointer);
+bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t node_number);
 
 void finish_node(struct sequence_data *sequenceDATA, int finished_node);
 
 int TryExecuteNode(struct sequence_data *sequenceDATA, int node);
 
-void signal_sequence_head(int node_to_signal, struct job_token *handled_job, sem_t *semaphore, int num_nodes, bool *precedence_matrix_pointer);
+void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, sem_t *semaphore);
+
+void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA);
 
 bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer);
 

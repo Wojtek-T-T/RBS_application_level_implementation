@@ -1,33 +1,37 @@
 #include "rbs_lib.h"
 
 
-void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, sem_t *semaphore, void *(*func)())
+void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)())
 {
 	//Allocate memory for sequence data
 	struct sequence_data *sequenceDATA = malloc(sizeof(struct sequence_data));
 	
 	sequenceDATA->task = taskDATA;
 	sequenceDATA->sequence_id = sequenceID;
-	sequenceDATA->semaphore = semaphore;
 	sequenceDATA->current_job = taskDATA->last_added_job;
+	
+	sem_t *semaphore = taskDATA->sequence_guards + (sequenceID - 1);
+	
+	sequenceDATA->semaphore = semaphore;
 	
 	//Initialize semaphore
 	sem_init(semaphore, 0, 0);
 	
 	//Initialize thread
-    pthread_create(thread, NULL, func, (void*) sequenceDATA);
+    int result = pthread_create(thread, &attr, func, (void*) sequenceDATA);
+    
+    //printf("%d\n", result);
  
 }
 
 void initialize_rbs()
 {
 	#ifdef LOG_DATA
-	printf("log\n");
 	openlog("RBS_IMPLEMENTATION_LOG", LOG_PID|LOG_CONS, LOG_USER);
 	#endif
 }
 
-struct task_data *InitializeTask(int taskID, bool *precedenceMATRIX, int number_of_nodes, sem_t *semaphores_address, void (*workload[])())
+struct task_data *InitializeTask(int taskID, bool *precedenceMATRIX, int *sequenceHEADS, int number_of_nodes, int number_of_sequences, sem_t *semaphores_address, void (*workload[])())
 {
 	//allocate memory for the data structure
 	struct task_data *taskDATA = malloc(sizeof(struct task_data));
@@ -35,8 +39,10 @@ struct task_data *InitializeTask(int taskID, bool *precedenceMATRIX, int number_
 	taskDATA->task_id = taskID;
 	taskDATA->job_counter = 0;
 	taskDATA->precedence_matrix = precedenceMATRIX;
+	taskDATA->sequence_heads = sequenceHEADS;
 	taskDATA->number_of_nodes = number_of_nodes;
-	taskDATA->sem = semaphores_address;
+	taskDATA->number_of_sequences = number_of_sequences;
+	taskDATA->sequence_guards = semaphores_address;
 	taskDATA->last_added_job = malloc(sizeof(struct job_token));
 	taskDATA->last_added_job->previous_job = NULL;
 	
@@ -118,7 +124,7 @@ void ReleaseNewJob(struct task_data *taskDATA)
     taskDATA->last_added_job->next_job = new_job;
     
     //post semaphore
-    sem_post(taskDATA->sem);
+    sem_post(taskDATA->sequence_guards);
     
     #ifdef LOG_DATA
     clock_t time = clock();
@@ -130,15 +136,15 @@ void ReleaseNewJob(struct task_data *taskDATA)
     
 }
 
-void finish_job(struct job_token *finished_job)
+void FinishJob(struct sequence_data *sequenceDATA)
 {
-    pthread_mutex_destroy(&finished_job->job_lock);
+    pthread_mutex_destroy(&sequenceDATA->current_job->job_lock);
     
     //Free memory
-    free(finished_job->previous_job);
+    free(sequenceDATA->current_job->previous_job);
 }
 
-bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_matrix_pointer, u_int8_t node_number, struct job_token *job_pointer)
+bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t node_number)
 {
     //source nodes doesn't have any precedence constraints
     if(node_number == 1)
@@ -146,15 +152,15 @@ bool check_precedence_constraints(u_int8_t number_of_nodes, bool *precedence_mat
         return true;
     }
 
-    u_int8_t start_index = (node_number-2) * (number_of_nodes-1);
+    u_int8_t start_index = (node_number-2) * (sequenceDATA->task->number_of_nodes-1);
     u_int32_t mask = 0xFFFFFFFF;
-    u_int32_t job_state_local = job_pointer->job_state & mask;
+    u_int32_t job_state_local = sequenceDATA->current_job->job_state & mask;
     bool *temp_bool_pointer = NULL;
 
-    for(int x = 0; x < (number_of_nodes-1); x++)
+    for(int x = 0; x < (sequenceDATA->task->number_of_nodes-1); x++)
     {
         u_int8_t temp_index = start_index + x;
-        temp_bool_pointer = precedence_matrix_pointer + temp_index;
+        temp_bool_pointer = sequenceDATA->task->precedence_matrix + temp_index;
 
         if(*temp_bool_pointer == true)
         {
@@ -194,7 +200,7 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
      
      
     //Check if the next node can be executed
-    if((check_precedence_constraints(sequenceDATA->task->number_of_nodes, sequenceDATA->task->precedence_matrix, node, sequenceDATA->current_job)) == false)
+    if((check_precedence_constraints(sequenceDATA, node)) == false)
     {
         pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
         return 1;
@@ -234,17 +240,58 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
     //Mark node as finished
     finish_node(sequenceDATA, node);	
     
+    #ifdef AUTO_SIGNAL
+    SignalSequenceAut(node, sequenceDATA);
+    #endif
+    
     return 0;
 }
 
-void signal_sequence_head(int node_to_signal, struct job_token *handled_job, sem_t *semaphore, int num_nodes, bool *precedence_matrix_pointer)
+void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, sem_t *semaphore)
 {
-    bool signal_flag = check_precedence_constraints(num_nodes, precedence_matrix_pointer, node_to_signal, handled_job);
-
+    bool signal_flag = check_precedence_constraints(sequenceDATA, node_to_signal);
     if(signal_flag == true)
     {
         sem_post(semaphore);
     }
+}
+
+void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
+{
+	
+	if(finished_node == sequenceDATA->task->number_of_nodes)
+	{
+		return;
+	}
+	
+	for(int x = 0; x < (sequenceDATA->task->number_of_nodes -1); x++)
+	{
+		bool *ptr = sequenceDATA->task->precedence_matrix;
+		
+		int index = (finished_node -1) + (x * (sequenceDATA->task->number_of_nodes -1));
+		
+		ptr = ptr + index;
+	
+		
+		if(*ptr == 1)
+		{
+			for(int i = 0; i < (sequenceDATA->task->number_of_sequences -1); i++)
+			{
+
+				if(*(sequenceDATA->task->sequence_heads+i) == (x+2))
+				{
+		
+					bool flag = check_precedence_constraints(sequenceDATA, (x+2));
+									
+					if(flag == true)
+					{
+						sem_t *semaphore = sequenceDATA->task->sequence_guards + (i + 1);											
+						sem_post(semaphore);   
+					}
+				}				
+			}
+		}				
+	}
 }
 
 bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer)
