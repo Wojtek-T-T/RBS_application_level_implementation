@@ -44,9 +44,7 @@ struct sequence_data
 	int sequence_id;
 	int cpu_id;
 	struct task_data *task;
-	
 	struct job_token *current_job;
-	
 	sem_t *semaphore;
 	
 };
@@ -55,6 +53,7 @@ struct sequence_data
 struct task_data
 {
 	int task_id;
+	int priority;
 	int number_of_nodes;
 	int number_of_sequences;
 	int job_counter;
@@ -62,6 +61,8 @@ struct task_data
 	int *sequence_heads;
 	sem_t *sequence_guards;
 	struct job_token *last_added_job;
+	pthread_attr_t attr;
+	struct sched_param schedPARAM;
 	
 	void (*func[100])();
 };
@@ -76,17 +77,7 @@ void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *t
 void initialize_rbs();
 
 
-/* This function initializes a task that is going to be executed according to RBS rules
- * PARAMETERS:
- * 		int taskID: ID number of the scheduled task 
- * 		bool *precedenceMATRIX: pointer to a data structure representing the precedence constraints between nodes of the task
- * 		int number_of_nodes: number of nodes of the task
- * 		sem_t *semaphores_address: pointer to the semaphore that is guarding the task 
- * 		void (*workload[])(): array of pointers to functions representing the workload of the nodes
- * RETURN TYPE:
- * 		struct task_data: pointer to the data structure containing the data of the initialized task
- */
-struct task_data *InitializeTask(int taskID, bool *precedenceMATRIX, int *sequenceHEADS, int number_of_nodes, int number_of_sequences, sem_t *semaphores_address, void (*workload[])());
+int InitializeTask(struct task_data *taskDATA);
 
 void log_info(int task, int sequence, int node, int job, clock_t time_stamp, int event);
 

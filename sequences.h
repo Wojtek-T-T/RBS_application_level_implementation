@@ -10,6 +10,8 @@
 #define NR_SEQ_T1 4
 #define NR_SEQ_T2 3
 
+struct task_data task1_data;
+struct task_data task2_data;
 
 void *(*seq_func_ptr_t1[NR_SEQ_T1])();
 

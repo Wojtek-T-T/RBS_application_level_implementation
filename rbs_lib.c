@@ -19,8 +19,6 @@ void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *t
 	
 	//Initialize thread
     int result = pthread_create(thread, &attr, func, (void*) sequenceDATA);
-    
-    //printf("%d\n", result);
  
 }
 
@@ -31,31 +29,31 @@ void initialize_rbs()
 	#endif
 }
 
-struct task_data *InitializeTask(int taskID, bool *precedenceMATRIX, int *sequenceHEADS, int number_of_nodes, int number_of_sequences, sem_t *semaphores_address, void (*workload[])())
+int InitializeTask(struct task_data *taskDATA)
 {
-	//allocate memory for the data structure
-	struct task_data *taskDATA = malloc(sizeof(struct task_data));
-	
-	taskDATA->task_id = taskID;
-	taskDATA->job_counter = 0;
-	taskDATA->precedence_matrix = precedenceMATRIX;
-	taskDATA->sequence_heads = sequenceHEADS;
-	taskDATA->number_of_nodes = number_of_nodes;
-	taskDATA->number_of_sequences = number_of_sequences;
-	taskDATA->sequence_guards = semaphores_address;
-	taskDATA->last_added_job = malloc(sizeof(struct job_token));
-	taskDATA->last_added_job->previous_job = NULL;
-	
-	//Copy functions pointers
-	for(int i = 0; i < number_of_nodes; i++)
-	{
-		taskDATA->func[i] = workload[i];
-	}
-	
-	return taskDATA;
-	
-}
+    int result = 0;
 
+    if((taskDATA->priority > 99) || (taskDATA->priority < 1))
+    {
+        //Priority out of range
+        return 1;
+    }
+
+    //Allocate memory for previous job, this structure is needed only for purpose of correct functioning of the double linked list
+    taskDATA->last_added_job = malloc(sizeof(struct job_token));
+
+    pthread_attr_init(&taskDATA->attr);
+
+    result = pthread_attr_setschedpolicy(&taskDATA->attr, SCHED_FIFO);
+
+    taskDATA->schedPARAM.sched_priority = taskDATA->priority;
+
+    result = pthread_attr_setschedparam(&taskDATA->attr, &taskDATA->schedPARAM);
+
+    result = pthread_attr_setinheritsched(&taskDATA->attr, PTHREAD_EXPLICIT_SCHED);
+
+    return 0;
+}
 
 void log_info(int task, int sequence, int node, int job, clock_t time_stamp, int event)
 {
@@ -138,6 +136,13 @@ void ReleaseNewJob(struct task_data *taskDATA)
 
 void FinishJob(struct sequence_data *sequenceDATA)
 {
+    //If object is nt existing don't do anything
+    if(sequenceDATA->current_job == NULL)
+    {
+        return;
+    }
+
+    //Destroy mutex
     pthread_mutex_destroy(&sequenceDATA->current_job->job_lock);
     
     //Free memory
@@ -198,7 +203,6 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
 	
      pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
      
-     
     //Check if the next node can be executed
     if((check_precedence_constraints(sequenceDATA, node)) == false)
     {
@@ -212,7 +216,6 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
         pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
         return 2;
     } 
-    
     
     int mask = 1;
     mask = mask << (node - 1);
@@ -231,11 +234,9 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
     #ifdef LOG_DATA
     log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, time, NODE_EXECUTION_STARTED);
     #endif
-   
     
     //Execute Node
     sequenceDATA->task->func[(node-1)]();
-    
     
     //Mark node as finished
     finish_node(sequenceDATA, node);	
