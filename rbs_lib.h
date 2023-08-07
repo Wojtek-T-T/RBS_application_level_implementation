@@ -24,6 +24,7 @@
 #define NEW_JOB_RELEASED 1
 #define NODE_EXECUTION_FINISHED 2
 #define JOB_EXECUTION_FINISHED 3
+#define SEQUENCE_TERMINATED 4
 
 //task data structures
 struct job_token
@@ -35,6 +36,8 @@ struct job_token
     u_int32_t job_state;
     pthread_mutex_t job_lock;
     int job_id;
+
+	sem_t *secondary_sequences_guards;
 };
 
 
@@ -59,7 +62,7 @@ struct task_data
 	int job_counter;
 	bool *precedence_matrix;
 	int *sequence_heads;
-	sem_t *sequence_guards;
+	sem_t *sequences_guards;
 	struct job_token *last_added_job;
 	pthread_attr_t attr;
 	struct sched_param schedPARAM;
@@ -100,6 +103,8 @@ void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, s
 void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA);
 
 bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer);
+
+void TerminateSequence(struct sequence_data *sequenceDATA, int node);
 
 
 #endif

@@ -28,26 +28,40 @@ int main(void)
     InitializeSequence(&task2_data, 1, &task_2_sequence_1_thread, task2_data.attr, seq_func_ptr_t2[0]);
     InitializeSequence(&task2_data, 2, &task_2_sequence_2_thread, task2_data.attr, seq_func_ptr_t2[1]);
     InitializeSequence(&task2_data, 3, &task_2_sequence_3_thread, task2_data.attr, seq_func_ptr_t2[2]);   
+
+
+    //printf("sem address: %d\n", &semaphores_T1[3]);
     
 
-    syslog(LOG_INFO, "SPACE SPACE SPACE SPACE");
-    syslog(LOG_INFO, "SPACE SPACE SPACE SPACE");
+    //syslog(LOG_INFO, "SPACE SPACE SPACE SPACE");
+    //syslog(LOG_INFO, "SPACE SPACE SPACE SPACE");
     
-    //int bla = nanosleep(&tim , &tim);
+    //int result = nanosleep(&tim , &tim);
     
     ReleaseNewJob(&task1_data);
-    ReleaseNewJob(&task2_data);
+    //ReleaseNewJob(&task2_data);
 
-    //int bla = nanosleep(&tim , &tim);
+    //result = nanosleep(&tim , &tim);
     
     ReleaseNewJob(&task1_data);
-    ReleaseNewJob(&task2_data);
+    //ReleaseNewJob(&task2_data);
     
-    //bla = nanosleep(&tim , &tim);
+    //result = nanosleep(&tim , &tim);
     
     
     ReleaseNewJob(&task1_data);
-    ReleaseNewJob(&task2_data);
+    //ReleaseNewJob(&task2_data);
+
+    //result = nanosleep(&tim , &tim);
+    
+    
+    ReleaseNewJob(&task1_data);
+   // ReleaseNewJob(&task2_data);
+
+    //result = nanosleep(&tim , &tim);
+
+    ReleaseNewJob(&task1_data);
+   // ReleaseNewJob(&task2_data);
     
     
     pthread_join(task_1_sequence_1_thread, NULL);

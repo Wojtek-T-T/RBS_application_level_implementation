@@ -10,7 +10,7 @@ void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *t
 	sequenceDATA->sequence_id = sequenceID;
 	sequenceDATA->current_job = taskDATA->last_added_job;
 	
-	sem_t *semaphore = taskDATA->sequence_guards + (sequenceID - 1);
+	sem_t *semaphore = taskDATA->sequences_guards + (sequenceID - 1);
 	
 	sequenceDATA->semaphore = semaphore;
 	
@@ -41,7 +41,9 @@ int InitializeTask(struct task_data *taskDATA)
 
     //Allocate memory for previous job, this structure is needed only for purpose of correct functioning of the double linked list
     taskDATA->last_added_job = malloc(sizeof(struct job_token));
+    taskDATA->last_added_job->secondary_sequences_guards = NULL;
 
+    //SET SCHEDULER TO SCHED_FIFO and set priority of the task
     pthread_attr_init(&taskDATA->attr);
 
     result = pthread_attr_setschedpolicy(&taskDATA->attr, SCHED_FIFO);
@@ -51,6 +53,7 @@ int InitializeTask(struct task_data *taskDATA)
     result = pthread_attr_setschedparam(&taskDATA->attr, &taskDATA->schedPARAM);
 
     result = pthread_attr_setinheritsched(&taskDATA->attr, PTHREAD_EXPLICIT_SCHED);
+    /////////////////////////////
 
     return 0;
 }
@@ -59,20 +62,24 @@ void log_info(int task, int sequence, int node, int job, clock_t time_stamp, int
 {
 	if(event == NODE_EXECUTION_STARTED)
 	{
-		syslog(LOG_INFO, "NODE_EXECUTION_STARTED, task %d, sequence %d, node %d, job %d at cycle: %f",task, sequence, node, job, (float)time_stamp);
+		syslog(LOG_INFO, "NODE_EXECUTION_STARTED, task %d, sequence %d, node %d, job %d, at cycle: %f",task, sequence, node, job, (float)time_stamp);
 	}
 	else if(event == NODE_EXECUTION_FINISHED)
 	{
-		syslog(LOG_INFO, "NODE_EXECUTION_FINISHED, task %d, sequence %d, node %d, job %d at cycle: %f",task, sequence, node, job, (float)time_stamp);
+		syslog(LOG_INFO, "NODE_EXECUTION_FINISHED, task %d, sequence %d, node %d, job %d, at cycle: %f",task, sequence, node, job, (float)time_stamp);
 	}
 	else if(event == NEW_JOB_RELEASED)
 	{
-		syslog(LOG_INFO, "NEW_JOB_RELEASED, task %d, job %d at cycle: %f",task, job, (float)time_stamp);
+		syslog(LOG_INFO, "NEW_JOB_RELEASED, task %d, job %d, at cycle: %f",task, job, (float)time_stamp);
 	}
 	else if(event == JOB_EXECUTION_FINISHED)
 	{
-		syslog(LOG_INFO, "JOB_EXECUTION_FINISHED, task %d, job %d at cycle: %f",task, job, (float)time_stamp);
+		syslog(LOG_INFO, "JOB_EXECUTION_FINISHED, task %d, job %d, at cycle: %f",task, job, (float)time_stamp);
 	}
+    else if(event == SEQUENCE_TERMINATED)
+    {
+        syslog(LOG_INFO, "SEQUENCE_TERMINATED, task %d, sequence %d, after node %d, job %d, at cycle: %f",task, sequence, node, job, (float)time_stamp);
+    }
 	else
 	{
 		
@@ -99,7 +106,11 @@ void WaitNextJob(struct sequence_data *sequenceDATA)
 	//Update pointer
     sequenceDATA->current_job = sequenceDATA->current_job->next_job;
 
-    
+
+    //Wait till sequence can start
+    sem_t * semaphore = sequenceDATA->current_job->secondary_sequences_guards + sequenceDATA->sequence_id - 1;
+    sem_wait(semaphore);
+
 }
 
 void ReleaseNewJob(struct task_data *taskDATA)
@@ -114,6 +125,15 @@ void ReleaseNewJob(struct task_data *taskDATA)
     new_job->job_execution_state = 0;
     new_job->job_state = 0;
     new_job->previous_job = taskDATA->last_added_job;
+
+    //Allocate memory for the secondary guards of the job sequences and initialize them
+    new_job->secondary_sequences_guards = calloc(taskDATA->number_of_sequences, sizeof(sem_t));
+
+    //Initialize secondary sequence guards
+    for(int i = 0; i < taskDATA->number_of_sequences; i++)
+    {
+        sem_init((new_job->secondary_sequences_guards + i), 0, 0);
+    }
     
     //initialize job data lock
     pthread_mutex_init(&new_job->job_lock, NULL);
@@ -121,8 +141,12 @@ void ReleaseNewJob(struct task_data *taskDATA)
     //update the pointer to the next job
     taskDATA->last_added_job->next_job = new_job;
     
-    //post semaphore
-    sem_post(taskDATA->sequence_guards);
+    //post primary and secondary guard of the first sequence
+    for(int i = 0; i < taskDATA->number_of_sequences; i++)
+    {
+        sem_post((taskDATA->sequences_guards + i));
+    }
+    sem_post(new_job->secondary_sequences_guards);
     
     #ifdef LOG_DATA
     clock_t time = clock();
@@ -136,17 +160,26 @@ void ReleaseNewJob(struct task_data *taskDATA)
 
 void FinishJob(struct sequence_data *sequenceDATA)
 {
-    //If object is nt existing don't do anything
-    if(sequenceDATA->current_job == NULL)
+    //If object is empty (first token is always empty) do nothing
+    if(sequenceDATA->current_job->previous_job->secondary_sequences_guards == NULL)
     {
         return;
     }
 
     //Destroy mutex
-    pthread_mutex_destroy(&sequenceDATA->current_job->job_lock);
+    pthread_mutex_destroy(&sequenceDATA->current_job->previous_job->job_lock);
+
+    //Destroy secondary semaphores
+    for(int i = 0; i < sequenceDATA->task->number_of_sequences; i++)
+    {
+        sem_destroy((sequenceDATA->current_job->previous_job->secondary_sequences_guards + i));
+    }
     
     //Free memory
+    free(sequenceDATA->current_job->previous_job->secondary_sequences_guards);
     free(sequenceDATA->current_job->previous_job);
+
+
 }
 
 bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t node_number)
@@ -186,11 +219,11 @@ void finish_node(struct sequence_data *sequenceDATA, int finished_node)
     int mask = 1;
     mask = mask << (finished_node - 1);
 
-    pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
+    //pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
 
     sequenceDATA->current_job->job_state = sequenceDATA->current_job->job_state | mask;
 
-    pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
+    //pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
     
     #ifdef LOG_DATA
     clock_t time = clock();
@@ -201,7 +234,7 @@ void finish_node(struct sequence_data *sequenceDATA, int finished_node)
 int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
 {
 	
-     pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
+    pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
      
     //Check if the next node can be executed
     if((check_precedence_constraints(sequenceDATA, node)) == false)
@@ -242,7 +275,9 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
     finish_node(sequenceDATA, node);	
     
     #ifdef AUTO_SIGNAL
+    //pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
     SignalSequenceAut(node, sequenceDATA);
+    //pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
     #endif
     
     return 0;
@@ -286,7 +321,7 @@ void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
 									
 					if(flag == true)
 					{
-						sem_t *semaphore = sequenceDATA->task->sequence_guards + (i + 1);											
+						sem_t *semaphore = sequenceDATA->current_job->secondary_sequences_guards + (i + 1);											
 						sem_post(semaphore);   
 					}
 				}				
@@ -312,4 +347,12 @@ bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_poin
         return false;
     }
     
+}
+
+void TerminateSequence(struct sequence_data *sequenceDATA, int node)
+{
+    #ifdef LOG_DATA
+    clock_t time = clock();
+    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, time, SEQUENCE_TERMINATED);
+    #endif
 }

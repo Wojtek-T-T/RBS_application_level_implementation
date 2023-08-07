@@ -36,11 +36,11 @@ void (*nodes_func_ptr_t2[NR_NODES_T2])() = {node_2_1, node_2_2, node_2_3, node_2
 
 
 struct task_data task1_data = {.task_id = 1, .priority = 50, .number_of_nodes = 7, .number_of_sequences = 4, .job_counter = 0, 
-.precedence_matrix = task_1_precedence_constraints, .sequence_heads = task_1_sequence_heads, .sequence_guards = semaphores_T1,
+.precedence_matrix = task_1_precedence_constraints, .sequence_heads = task_1_sequence_heads, .sequences_guards = semaphores_T1,
 .last_added_job = NULL, .func = {node_1_1, node_1_2, node_1_3, node_1_4, node_1_5, node_1_6, node_1_7 }};
 
 struct task_data task2_data = {.task_id = 2, .priority = 5, .number_of_nodes = 5, .number_of_sequences = 3, .job_counter = 0, 
-.precedence_matrix = task_2_precedence_constraints, .sequence_heads = task_2_sequence_heads, .sequence_guards = semaphores_T2,
+.precedence_matrix = task_2_precedence_constraints, .sequence_heads = task_2_sequence_heads, .sequences_guards = semaphores_T2,
 .last_added_job = NULL, .func = {node_2_1, node_2_2, node_2_3, node_2_4, node_2_5 }};
 
 
@@ -60,12 +60,15 @@ void *sequence_1_1_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 1) != 0)
         {
+            TerminateSequence(seq_data, 1);
 			continue;
-        }     
+        }
+  
         
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 2) != 0)
         {
+            TerminateSequence(seq_data, 2);
 			continue;
         }
 
@@ -73,6 +76,7 @@ void *sequence_1_1_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 5) != 0)
         {
+            TerminateSequence(seq_data, 5);
 			continue;
         }
 		
@@ -80,6 +84,7 @@ void *sequence_1_1_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 7) != 0)
         {
+            TerminateSequence(seq_data, 7);
 			continue;
         }
 		
@@ -106,12 +111,14 @@ void *sequence_1_2_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 3) != 0)
         {
+            TerminateSequence(seq_data, 3);
 			continue;
         }
            
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 5) != 0)
         {
+            TerminateSequence(seq_data, 5);
 			continue;
         }
 
@@ -119,6 +126,7 @@ void *sequence_1_2_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 7) != 0)
         {
+            TerminateSequence(seq_data, 7);
 			continue;
         }
         
@@ -145,12 +153,14 @@ void *sequence_1_3_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 4) != 0)
         {
+            TerminateSequence(seq_data, 4);
 			continue;
         }
 
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 5) != 0)
         {
+            TerminateSequence(seq_data, 5);
 			continue;
         }
 
@@ -158,6 +168,7 @@ void *sequence_1_3_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 7) != 0)
         {
+            TerminateSequence(seq_data, 7);
 			continue;
         }
         
@@ -183,12 +194,14 @@ void *sequence_1_4_function(void *arguments)
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 6) != 0)
         {
+            TerminateSequence(seq_data, 6);
 			continue;
         }
 
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 7) != 0)
         {
+            TerminateSequence(seq_data, 7);
 			continue;
         }
         
