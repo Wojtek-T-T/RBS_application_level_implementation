@@ -10,22 +10,30 @@
 #define NR_SEQ_T1 4
 #define NR_SEQ_T2 3
 
+//Tasks data structures
 struct task_data task1_data;
 struct task_data task2_data;
 
+//Task 1 sequence and node functions
 void *(*seq_func_ptr_t1[NR_SEQ_T1])();
-
 void (*nodes_func_ptr_t1[NR_NODES_T1])();
 
 
+//Task 2 sequence and node functions
 void *(*seq_func_ptr_t2[NR_SEQ_T2])();
-
 void (*nodes_func_ptr_t2[NR_NODES_T2])();
 
-
+//Precedence constraints
 bool task_1_precedence_constraints[36];
 bool task_2_precedence_constraints[16];
 
+u_int32_t T1_precedence_constraints_h[NR_NODES_T1];
+u_int32_t T1_precedence_constraints_v[NR_NODES_T1];
+
+u_int32_t T2_precedence_constraints_h[NR_NODES_T2];
+u_int32_t T2_precedence_constraints_v[NR_NODES_T2];
+
+//Sequence heads
 int task_1_sequence_heads[NR_SEQ_T1-1];
 int task_2_sequence_heads[NR_SEQ_T2-1];
 
@@ -39,17 +47,6 @@ sem_t semaphores_T2[NR_SEQ_T2];
 pthread_t task1_threads[NR_SEQ_T1];
 pthread_t task2_threads[NR_SEQ_T2];
 
-pthread_t task_1_sequence_1_thread;
-pthread_t task_1_sequence_2_thread;
-pthread_t task_1_sequence_3_thread;
-pthread_t task_1_sequence_4_thread;
-
-pthread_t task_2_sequence_1_thread;
-pthread_t task_2_sequence_2_thread;
-pthread_t task_2_sequence_3_thread;
-
-
-
 //Sequence functions
 void *sequence_1_1_function(void *arguments);
 void *sequence_1_2_function(void *arguments);
@@ -58,6 +55,5 @@ void *sequence_1_4_function(void *arguments);
 void *sequence_2_1_function(void *arguments);
 void *sequence_2_2_function(void *arguments);
 void *sequence_2_3_function(void *arguments);
-
 
 #endif

@@ -24,7 +24,23 @@ void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *t
 
 void initialize_rbs()
 {
+    //Set main thread parameters
+    int result = 0;
+    pthread_attr_t attr;
+	struct sched_param schedPARAM;
+
+    pthread_attr_init(&attr);
+    result = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+    schedPARAM.sched_priority = 99;
+    result = pthread_attr_setschedparam(&attr, &schedPARAM);
+    result = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+    
+    //set_cpu(3);
+
+    //Initialize logger
 	#ifdef LOG_DATA
+    pthread_mutex_init(&log_lock, NULL);
+    log_events_counter = 0;
 	openlog("RBS_IMPLEMENTATION_LOG", LOG_PID|LOG_CONS, LOG_USER);
 	#endif
 }
@@ -45,21 +61,43 @@ int InitializeTask(struct task_data *taskDATA)
 
     //SET SCHEDULER TO SCHED_FIFO and set priority of the task
     pthread_attr_init(&taskDATA->attr);
-
     result = pthread_attr_setschedpolicy(&taskDATA->attr, SCHED_FIFO);
-
     taskDATA->schedPARAM.sched_priority = taskDATA->priority;
-
     result = pthread_attr_setschedparam(&taskDATA->attr, &taskDATA->schedPARAM);
-
     result = pthread_attr_setinheritsched(&taskDATA->attr, PTHREAD_EXPLICIT_SCHED);
-    /////////////////////////////
 
     return 0;
 }
 
-void log_info(int task, int sequence, int node, int job, clock_t time_stamp, int event)
+void log_info(int task, int sequence, int node, int job, int event)
 {
+    pthread_mutex_lock(&log_lock);
+    int local_counter = log_events_counter;
+    log_events_counter++;
+    pthread_mutex_unlock(&log_lock);
+
+
+    clock_gettime(CLOCK_REALTIME, &log_events_buffer[local_counter].tim);
+    
+    log_events_buffer[local_counter].task = task;
+    log_events_buffer[local_counter].sequence = sequence;
+    log_events_buffer[local_counter].node = node;
+    log_events_buffer[local_counter].job = job;
+    log_events_buffer[local_counter].event = event;
+
+
+    
+
+    /*
+    struct timespec time;
+
+    clock_gettime(CLOCK_REALTIME, &time);
+
+    time.tv_sec = time.tv_sec - time_reference.tv_sec;
+    double time_stamp = (double)time.tv_sec * 1000000;
+    time_stamp = time_stamp + (time.tv_nsec/1000);
+
+
 	if(event == NODE_EXECUTION_STARTED)
 	{
 		syslog(LOG_INFO, "NODE_EXECUTION_STARTED, task %d, sequence %d, node %d, job %d, at cycle: %f",task, sequence, node, job, (float)time_stamp);
@@ -84,7 +122,7 @@ void log_info(int task, int sequence, int node, int job, clock_t time_stamp, int
 	{
 		
 	}
-	
+	*/
 }
 
 void set_cpu(int cpu_num)
@@ -95,8 +133,6 @@ void set_cpu(int cpu_num)
    CPU_SET(cpu_num, &cpuset);  
    sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
 }
-
-
 
 void WaitNextJob(struct sequence_data *sequenceDATA)
 {
@@ -115,15 +151,20 @@ void WaitNextJob(struct sequence_data *sequenceDATA)
 
 void ReleaseNewJob(struct task_data *taskDATA)
 {
-	//Increase the jobs counter
+    //Increase the jobs counter
 	taskDATA->job_counter = taskDATA->job_counter + 1;
+
+    //Log event
+    #ifdef LOG_DATA
+    log_info(taskDATA->task_id, 0, taskDATA->job_counter, taskDATA->job_counter, NEW_JOB_RELEASED);
+    #endif
 	
 	//allocate memory for new job token
     struct job_token *new_job = malloc(sizeof(struct job_token));
 
 	new_job->job_id = taskDATA->job_counter;
-    new_job->job_execution_state = 0;
-    new_job->job_state = 0;
+    new_job->nodes_in_execution = 0;
+    new_job->nodes_finished = 0;
     new_job->previous_job = taskDATA->last_added_job;
 
     //Allocate memory for the secondary guards of the job sequences and initialize them
@@ -147,11 +188,6 @@ void ReleaseNewJob(struct task_data *taskDATA)
         sem_post((taskDATA->sequences_guards + i));
     }
     sem_post(new_job->secondary_sequences_guards);
-    
-    #ifdef LOG_DATA
-    clock_t time = clock();
-    log_info(taskDATA->task_id, 0, new_job->job_id, new_job->job_id, time, NEW_JOB_RELEASED);
-    #endif
     
     //update the pointer to the last job
     taskDATA->last_added_job = new_job;
@@ -192,7 +228,7 @@ bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t n
 
     u_int8_t start_index = (node_number-2) * (sequenceDATA->task->number_of_nodes-1);
     u_int32_t mask = 0xFFFFFFFF;
-    u_int32_t job_state_local = sequenceDATA->current_job->job_state & mask;
+    u_int32_t job_state_local = sequenceDATA->current_job->nodes_finished & mask;
     bool *temp_bool_pointer = NULL;
 
     for(int x = 0; x < (sequenceDATA->task->number_of_nodes-1); x++)
@@ -214,70 +250,58 @@ bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t n
     return true;
 }
 
-void finish_node(struct sequence_data *sequenceDATA, int finished_node)
+void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node)
 {
+    //Mark task as finished by setting the bit in the job state variable
     int mask = 1;
     mask = mask << (finished_node - 1);
+    sequenceDATA->current_job->nodes_finished = sequenceDATA->current_job->nodes_finished | mask;
 
-    //pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
-
-    sequenceDATA->current_job->job_state = sequenceDATA->current_job->job_state | mask;
-
-    //pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
     
     #ifdef LOG_DATA
-    clock_t time = clock();
-    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, finished_node, sequenceDATA->current_job->job_id, time, NODE_EXECUTION_FINISHED);
+    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, finished_node, sequenceDATA->current_job->job_id, NODE_EXECUTION_FINISHED);
     #endif
 }
 
 int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
 {
-	
+	//Lock job_token
     pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
      
-    //Check if the next node can be executed
+    //Check if the next node can be executed if not unlock job_token and return
     if((check_precedence_constraints(sequenceDATA, node)) == false)
     {
         pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
         return 1;
     }
     
-    //Check if node is not already being executed
+    //Check if node is not already being executed if not unlock job_token and return
     if((check_if_node_in_execution(node, sequenceDATA->current_job)) == true)
     {
         pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
         return 2;
     } 
     
-    int mask = 1;
-    mask = mask << (node - 1);
-    sequenceDATA->current_job->job_execution_state = sequenceDATA->current_job->job_execution_state | mask;
-    
-    
-    //Save clock cycles
-    #ifdef LOG_DATA
-	clock_t time = clock();
-	#endif
+    //Change node state to being executed
+    MarkNodeInExecution(sequenceDATA, node);
 	
-	//Unlock
+	//Unlock job_token
     pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
     
     //Log event
     #ifdef LOG_DATA
-    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, time, NODE_EXECUTION_STARTED);
+    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, NODE_EXECUTION_STARTED);
     #endif
     
-    //Execute Node
+    //Execute Node function
     sequenceDATA->task->func[(node-1)]();
     
     //Mark node as finished
-    finish_node(sequenceDATA, node);	
+    MarkNodeExecuted(sequenceDATA, node);	
     
+    //Signal head nodes of sequences with incoming precedence constraints from the finished node
     #ifdef AUTO_SIGNAL
-    //pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
     SignalSequenceAut(node, sequenceDATA);
-    //pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
     #endif
     
     return 0;
@@ -294,7 +318,7 @@ void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, s
 
 void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
 {
-	
+	//If finished node = sink node no signalling necessary
 	if(finished_node == sequenceDATA->task->number_of_nodes)
 	{
 		return;
@@ -334,7 +358,7 @@ bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_poin
 {
     int mask = 1;
     mask = mask << (node_number - 1);
-    u_int32_t local_execution_state = job_pointer->job_execution_state;
+    u_int32_t local_execution_state = job_pointer->nodes_in_execution;
     
     local_execution_state = local_execution_state & mask;
     
@@ -352,7 +376,66 @@ bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_poin
 void TerminateSequence(struct sequence_data *sequenceDATA, int node)
 {
     #ifdef LOG_DATA
-    clock_t time = clock();
-    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, time, SEQUENCE_TERMINATED);
+    log_info(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, SEQUENCE_TERMINATED);
     #endif
+}
+
+void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node)
+{
+    int mask = 1;
+    mask = mask << (node - 1);
+    sequenceDATA->current_job->nodes_in_execution = sequenceDATA->current_job->nodes_in_execution | mask;
+}
+
+void display_log_data()
+{
+    if(log_displayd_flag == 1)
+    {
+        return;
+    }
+    for(int i = 0; i < log_events_counter; i++)
+    {
+        struct timespec time;
+
+        time.tv_sec = log_events_buffer[i].tim.tv_sec - time_reference.tv_sec;
+        time.tv_nsec = log_events_buffer[i].tim.tv_nsec; //- time_reference.tv_nsec;
+
+        double time_stamp = (double)time.tv_sec * 1000000;
+        time_stamp = time_stamp + (time.tv_nsec/1000);
+
+        int task = log_events_buffer[i].task;
+        int sequence = log_events_buffer[i].sequence;
+        int node = log_events_buffer[i].node;
+        int job = log_events_buffer[i].job;
+        //clock_t time_stamp = log_events_buffer[i].time_stamp;
+        int event = log_events_buffer[i].event;
+
+        if(event == NODE_EXECUTION_STARTED)
+	    {
+		    syslog(LOG_INFO, "NODE_EXECUTION_STARTED, task %d, sequence %d, node %d, job %d, at cycle: %f",task, sequence, node, job, time_stamp);
+	    }
+        else if(event == NODE_EXECUTION_FINISHED)
+        {
+            syslog(LOG_INFO, "NODE_EXECUTION_FINISHED, task %d, sequence %d, node %d, job %d, at cycle: %f",task, sequence, node, job, time_stamp);
+        }
+        else if(event == NEW_JOB_RELEASED)
+        {
+            syslog(LOG_INFO, "NEW_JOB_RELEASED, task %d, job %d, at cycle: %f",task, job, time_stamp);
+        }
+        else if(event == JOB_EXECUTION_FINISHED)
+        {
+            syslog(LOG_INFO, "JOB_EXECUTION_FINISHED, task %d, job %d, at cycle: %f",task, job, time_stamp);
+        }
+        else if(event == SEQUENCE_TERMINATED)
+        {
+            syslog(LOG_INFO, "SEQUENCE_TERMINATED, task %d, sequence %d, after node %d, job %d, at cycle: %f",task, sequence, node, job, time_stamp);
+        }
+        else
+        {
+		
+	    }
+    }
+
+    log_displayd_flag = 1;
+
 }
