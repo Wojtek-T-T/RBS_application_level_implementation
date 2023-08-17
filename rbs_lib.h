@@ -84,21 +84,19 @@ struct task_data
 	struct job_token *last_added_job;
 	pthread_attr_t attr;
 	struct sched_param schedPARAM;
-	
 	void (*func[100])();
 };
 
+
+#ifdef LOG_DATA
 struct log_event_data
 {
 	int task;
 	int sequence;
 	int node;
 	int job;
-	clock_t time_stamp;
 	int event;
-
 	struct timespec tim;
-
 };
 
 struct timespec time_reference;
@@ -106,7 +104,7 @@ struct timespec time_reference;
 pthread_mutex_t log_lock;
 struct log_event_data log_events_buffer[10000];
 int log_events_counter;
-bool log_displayd_flag;
+#endif
 	
 	
 
@@ -135,14 +133,72 @@ void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *t
 */
 void initialize_rbs();
 
+
+/*
+* InitializeTask
+* DESCRIPTION: This function initializes a task by setting its properties, initializing a double linked list and
+			   and setting its priority and scheduling policy
+* PARAMETERS: 
+			   struct task_data *taskDATA = pointer to task_data structure containgng all info about the initialized task
+
+* RETURN TYPE: INT: 
+					0 = initialization was succesfull
+					1 = Initialization failed due to priority of task ou of bounds
+*/
 int InitializeTask(struct task_data *taskDATA);
 
+
+
+/*
+* log_info
+* DESCRIPTION: This function saves an event the the log buffer
+* PARAMETERS: 
+			   int task = task ID
+			   int sequence = sequence ID
+			   int node = node ID
+			   int job = job ID
+			   int event = event type (NODE_EXECUTION_STARTED, NEW_JOB_RELEASED, NODE_EXECUTION_FINISHED, JOB_EXECUTION_FINISHED, SEQUENCE_TERMINATED)
+			   
+* RETURN TYPE: NONE
+*/
 void log_info(int task, int sequence, int node, int job, int event);
 
+
+/*
+* set_cpu
+* DESCRIPTION: This function maps a sequence thread to one specific CPU
+* PARAMETERS: 
+			   int cpu_num = CPU ID, the ID's are starting from 0 for core 1
+
+* RETURN TYPE: NONE
+*/
 void set_cpu(int cpu_num);
 
+
+
+/*
+* WaitNextJob
+* DESCRIPTION: This function blocks the execution of the thread of a sequence untill both: a new job has been released and all 
+			   precedence of the head node of the sequence have been fulfilled
+
+* PARAMETERS: 
+			   struct sequence_data *sequenceDATA = pointer to sequence_data structure containgng all info about the sequence 
+			   										from which the function is being called
+
+* RETURN TYPE: NONE
+*/
 void WaitNextJob(struct sequence_data *sequenceDATA);
 
+
+/*
+* ReleaseNewJob
+* DESCRIPTION: This function adds a new job of the provided task to the list. Internally function posts the primary guards of sequences.
+
+* PARAMETERS: 
+			   struct task_data *taskDATA = pointer to task_data structure containgng all info about the task
+
+* RETURN TYPE: NONE
+*/
 void ReleaseNewJob(struct task_data *taskDATA);
 
 void FinishJob(struct sequence_data *sequenceDATA);
@@ -151,6 +207,22 @@ bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t n
 
 void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node);
 
+
+
+/*
+* TryExecuteNode
+* DESCRIPTION: This function will try to claim and execute the provided node. If the node is already executed/in execution or 
+			   can not be executed yet because of missing precedance constraints, the function will terminate.
+
+* PARAMETERS: 
+			   struct task_data *taskDATA = pointer to task_data structure containgng all info about the task
+
+* RETURN TYPE: INT:
+					0 = Node was executed sucessfully
+					1 = Node could not be executed due to not fullfilled precedence constraints
+					2 = Node could not be executed because it already has been executed or is being executed
+						as a part of other sequence
+*/
 int TryExecuteNode(struct sequence_data *sequenceDATA, int node);
 
 void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, sem_t *semaphore);

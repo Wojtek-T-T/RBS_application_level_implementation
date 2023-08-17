@@ -55,6 +55,8 @@ void *sequence_1_1_function(void *arguments)
 		
 		//Wait for release of a new job
 		WaitNextJob(seq_data);
+
+
         
         
          //Try to execute node, terminate if precedence constraints not fullfield.
@@ -64,6 +66,8 @@ void *sequence_1_1_function(void *arguments)
 			continue;
         }
   
+
+
         
          //Try to execute node, terminate if precedence constraints not fullfield.
         if(TryExecuteNode(seq_data, 2) != 0)

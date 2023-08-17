@@ -183,5 +183,4 @@ void node_2_5()
     volatile u_int32_t *ptr2 = &dump25[0];
 	one_time_unit_workload(ptr, ptr2);
     one_time_unit_workload(ptr, ptr2);
-
 }

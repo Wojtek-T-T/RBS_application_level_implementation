@@ -5,15 +5,16 @@
 
 #define task1_period 2
 #define task2_period 3
-#define task1_max_rel 10
-#define task2_max_rel 10
+#define task1_max_rel 5
+#define task2_max_rel 5
 
 void handler(int signo);
 void handler2(int signo);
 
-int stop_counter = 0;
 int task1_counter= 0;
 int task2_counter= 0;
+
+sem_t stop_sem;
 
 int main(void) 
 {    
@@ -42,38 +43,27 @@ int main(void)
     InitializeSequence(&task2_data, 2, &task2_threads[1], task2_data.attr, seq_func_ptr_t2[1]);
     InitializeSequence(&task2_data, 3, &task2_threads[2], task2_data.attr, seq_func_ptr_t2[2]);   
 
-    signal(SIGALRM, handler);
-    
-    struct itimerval job_release_timer;
 
+    // SET TIMER FOR PERIODIC RELEASES OF JOBS
+    signal(SIGALRM, handler);
+    struct itimerval job_release_timer;
     job_release_timer.it_interval.tv_usec = 10000;
     job_release_timer.it_interval.tv_sec = 0;
-
     job_release_timer.it_value.tv_usec = 10000;
     job_release_timer.it_value.tv_sec = 0;
-
-
-
     setitimer(ITIMER_REAL, &job_release_timer, NULL);
 
 
-    pthread_join(task1_threads[0], NULL);
-    pthread_join(task1_threads[1], NULL);
-    pthread_join(task1_threads[2], NULL);
-    pthread_join(task1_threads[3], NULL);
-    
+
+    sem_wait(&stop_sem);
+
+    //CLose log
     closelog();
 
 }
 
 void handler(int signo)
 {
-    if(task1_data.job_counter == 0)
-    {
-        clock_gettime(CLOCK_REALTIME, &time_reference);
-    }
-
-
     if(task1_counter == 0 && task1_data.job_counter != task1_max_rel)
     {
         ReleaseNewJob(&task1_data);
@@ -83,7 +73,13 @@ void handler(int signo)
     {
         if(task2_data.job_counter == task2_max_rel)
         {
-            display_log_data();
+            signal(SIGALRM, handler2);
+            struct itimerval job_release_timer;
+            job_release_timer.it_interval.tv_usec = 900000;
+            job_release_timer.it_interval.tv_sec = 0;
+            job_release_timer.it_value.tv_usec = 900000;
+            job_release_timer.it_value.tv_sec = 0;
+            setitimer(ITIMER_REAL, &job_release_timer, NULL);
             return;
         }
     }
@@ -103,7 +99,13 @@ void handler(int signo)
     {
         if(task1_data.job_counter == task1_max_rel)
         {
-            display_log_data();
+            signal(SIGALRM, handler2);
+            struct itimerval job_release_timer;
+            job_release_timer.it_interval.tv_usec = 900000;
+            job_release_timer.it_interval.tv_sec = 0;
+            job_release_timer.it_value.tv_usec = 900000;
+            job_release_timer.it_value.tv_sec = 0;
+            setitimer(ITIMER_REAL, &job_release_timer, NULL);
             return;
         }       
     }
@@ -111,8 +113,20 @@ void handler(int signo)
     {
         task2_counter--;
     }
-
 }
 
+
+void handler2(int signo)
+{
+    struct itimerval job_release_timer;
+    job_release_timer.it_interval.tv_usec = 0;
+    job_release_timer.it_interval.tv_sec = 0;
+    job_release_timer.it_value.tv_usec = 0;
+    job_release_timer.it_value.tv_sec = 0;
+    setitimer(ITIMER_REAL, &job_release_timer, NULL);
+
+    display_log_data();
+    sem_post(&stop_sem);
+}
 
 
