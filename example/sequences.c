@@ -1,5 +1,7 @@
 #include "sequences.h"
 
+/* 
+//Old structures, in newst version replaced by new structures
 
 bool task_1_precedence_constraints[36] = 
 {
@@ -19,10 +21,18 @@ bool task_2_precedence_constraints[16] =
 1,	0,	0,	0,
 0,	1,	1,	1
 };
+*/
 
-int task_1_sequence_heads[NR_SEQ_T1-1] = {3, 4, 6};
+u_int32_t T1_precedence_constraints_h[NR_NODES_T1] = {0, 1, 1, 1, 14, 14, 48};
+u_int32_t T1_precedence_constraints_v[NR_NODES_T1] = {14, 48, 48, 48, 64, 64, 0};
 
-int task_2_sequence_heads[NR_SEQ_T2-1] = {3, 4};
+u_int32_t T2_precedence_constraints_h[NR_NODES_T2] = {0, 1, 1, 1, 14};
+u_int32_t T2_precedence_constraints_v[NR_NODES_T2] = {14, 16, 16, 16, 0};
+
+
+u_int32_t T1_sequence_heads[NR_NODES_T1] = {1, 0, 2, 3, 0, 4, 0};
+u_int32_t T2_sequence_heads[NR_NODES_T2] = {1, 2, 3, 0};
+
 
 
 void *(*seq_func_ptr_t1[NR_SEQ_T1])() = {sequence_1_1_function, sequence_1_2_function, sequence_1_3_function, sequence_1_4_function};
@@ -36,11 +46,11 @@ void (*nodes_func_ptr_t2[NR_NODES_T2])() = {node_2_1, node_2_2, node_2_3, node_2
 
 
 struct task_data task1_data = {.task_id = 1, .priority = 50, .number_of_nodes = 7, .number_of_sequences = 4, .job_counter = 0, 
-.precedence_matrix = task_1_precedence_constraints, .sequence_heads = task_1_sequence_heads, .sequences_guards = semaphores_T1,
+.precedence_matrix = task_1_precedence_constraints, .pre_cons_h = T1_precedence_constraints_h, .pre_cons_v = T1_precedence_constraints_v, .sequence_heads = T1_sequence_heads, .sequences_guards = semaphores_T1,
 .last_added_job = NULL, .func = {node_1_1, node_1_2, node_1_3, node_1_4, node_1_5, node_1_6, node_1_7 }};
 
 struct task_data task2_data = {.task_id = 2, .priority = 5, .number_of_nodes = 5, .number_of_sequences = 3, .job_counter = 0, 
-.precedence_matrix = task_2_precedence_constraints, .sequence_heads = task_2_sequence_heads, .sequences_guards = semaphores_T2,
+.precedence_matrix = task_2_precedence_constraints, .pre_cons_h = T2_precedence_constraints_h, .pre_cons_v = T2_precedence_constraints_v, .sequence_heads = T2_sequence_heads, .sequences_guards = semaphores_T2,
 .last_added_job = NULL, .func = {node_2_1, node_2_2, node_2_3, node_2_4, node_2_5 }};
 
 

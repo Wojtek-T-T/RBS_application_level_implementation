@@ -24,8 +24,8 @@ void *(*seq_func_ptr_t2[NR_SEQ_T2])();
 void (*nodes_func_ptr_t2[NR_NODES_T2])();
 
 //Precedence constraints
-bool task_1_precedence_constraints[36];
-bool task_2_precedence_constraints[16];
+//bool task_1_precedence_constraints[36];
+//bool task_2_precedence_constraints[16];
 
 u_int32_t T1_precedence_constraints_h[NR_NODES_T1];
 u_int32_t T1_precedence_constraints_v[NR_NODES_T1];
@@ -34,8 +34,8 @@ u_int32_t T2_precedence_constraints_h[NR_NODES_T2];
 u_int32_t T2_precedence_constraints_v[NR_NODES_T2];
 
 //Sequence heads
-int task_1_sequence_heads[NR_SEQ_T1-1];
-int task_2_sequence_heads[NR_SEQ_T2-1];
+u_int32_t T1_sequence_heads[NR_NODES_T1];
+u_int32_t T2_sequence_heads[NR_NODES_T2];
 
 
 //semaphores

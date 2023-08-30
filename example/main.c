@@ -3,10 +3,10 @@
 #include <signal.h>
 #include <sys/time.h>
 
-#define task1_period 2
-#define task2_period 3
-#define task1_max_rel 5
-#define task2_max_rel 5
+#define task1_period 10
+#define task2_period 20
+#define task1_max_rel 1
+#define task2_max_rel 0
 
 void handler(int signo);
 void handler2(int signo);
@@ -42,6 +42,8 @@ int main(void)
     InitializeSequence(&task2_data, 1, &task2_threads[0], task2_data.attr, seq_func_ptr_t2[0]);
     InitializeSequence(&task2_data, 2, &task2_threads[1], task2_data.attr, seq_func_ptr_t2[1]);
     InitializeSequence(&task2_data, 3, &task2_threads[2], task2_data.attr, seq_func_ptr_t2[2]);   
+
+
 
 
     // SET TIMER FOR PERIODIC RELEASES OF JOBS
@@ -92,7 +94,7 @@ void handler(int signo)
 
     if(task2_counter == 0 && task2_data.job_counter != task2_max_rel)
     {
-        ReleaseNewJob(&task2_data);
+        //ReleaseNewJob(&task2_data);
         task2_counter = task2_period;
     }
     else if(task2_data.job_counter == task2_max_rel)
