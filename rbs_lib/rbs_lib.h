@@ -79,7 +79,9 @@ struct task_data
 	int number_of_sequences;
 	int job_counter;
 	bool *precedence_matrix;
-	int *sequence_heads;
+	u_int32_t *pre_cons_h;
+	u_int32_t *pre_cons_v;
+	u_int32_t *sequence_heads;
 	sem_t *sequences_guards;
 	struct job_token *last_added_job;
 	pthread_attr_t attr;
@@ -203,7 +205,7 @@ void ReleaseNewJob(struct task_data *taskDATA);
 
 void FinishJob(struct sequence_data *sequenceDATA);
 
-bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t node_number);
+bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int32_t node_number);
 
 void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node);
 

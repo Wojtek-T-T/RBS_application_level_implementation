@@ -182,7 +182,7 @@ void FinishJob(struct sequence_data *sequenceDATA)
 
 }
 
-bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t node_number)
+bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int32_t node_number)
 {
     //source nodes doesn't have any precedence constraints
     if(node_number == 1)
@@ -190,6 +190,7 @@ bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t n
         return true;
     }
 
+    /*
     u_int8_t start_index = (node_number-2) * (sequenceDATA->task->number_of_nodes-1);
     u_int32_t mask = 0xFFFFFFFF;
     u_int32_t job_state_local = sequenceDATA->current_job->nodes_finished & mask;
@@ -212,6 +213,20 @@ bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int8_t n
     }
 
     return true;
+    */
+
+    
+    u_int32_t *ptr = (sequenceDATA->task->pre_cons_h + node_number - 1);
+    if(*ptr == (*ptr & sequenceDATA->current_job->nodes_finished))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+    
+
 }
 
 void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node)
@@ -284,6 +299,10 @@ void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, s
 
 void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
 {
+    //printf("hallo\n");
+    // VERSION 1
+
+    /*
 	//If finished node = sink node no signalling necessary
 	if(finished_node == sequenceDATA->task->number_of_nodes)
 	{
@@ -318,6 +337,39 @@ void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
 			}
 		}				
 	}
+    */
+    //VERSION 2
+
+    //Nodes that have incoming precedence constraints from the finished node
+    u_int32_t pre_cons = *(sequenceDATA->task->pre_cons_v + finished_node - 1);
+
+    //If there are no nodes with incoming precedence constraints from the finshed node => nothing to signal
+    if(pre_cons == 0)
+    {
+        return;
+    }
+
+    for(int i = 0; i < sequenceDATA->task->number_of_nodes; i ++)
+    {
+        u_int32_t mask = 1 << i;
+
+        if((mask & pre_cons) != 0)
+        {
+            //number of sequence of which the node is head of
+            int sequence = *(sequenceDATA->task->sequence_heads + i);
+
+            //if 0 than the node is not a head of any sequence
+            if(sequence != 0)
+            {
+                if(check_precedence_constraints(sequenceDATA, (i+1)))
+                {
+                    //SIGNAL
+                    sem_t *semaphore = sequenceDATA->current_job->secondary_sequences_guards + sequence - 1;	
+                    sem_post(semaphore);
+                }
+            }
+        }
+    }
 }
 
 bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer)
@@ -393,7 +445,7 @@ void display_log_data()
         }
         else if(event == SEQUENCE_TERMINATED)
         {
-            syslog(LOG_INFO, "SEQUENCE_TERMINATED, task %d, sequence %d, after node %d, job %d, at cycle: %f",task, sequence, node, job, time_stamp);
+            syslog(LOG_INFO, "SEQUENCE_TERMINATED, task %d, sequence %d, before node %d, job %d, at cycle: %f",task, sequence, node, job, time_stamp);
             //printf("i = %d, SEQUENCE_TERMINATED, task %d, sequence %d, after node %d, job %d, at cycle: %f\n",i, task, sequence, node, job, time_stamp);
         }
         else
