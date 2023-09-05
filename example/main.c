@@ -1,29 +1,42 @@
-#include "sequences.h"
-
+#include <string.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <signal.h>
-#include <sys/time.h>
+#include <time.h>
+#include <errno.h>
+#include <pthread.h>
+#include <semaphore.h>
+
+#include "sequences.h"
 
 #define task1_period 10
 #define task2_period 20
-#define task1_max_rel 1
-#define task2_max_rel 0
+#define task1_max_rel 3
+#define task2_max_rel 3
 
-void handler(int signo);
-void handler2(int signo);
+void handler(int sig, siginfo_t *si, void *uc);
+void set_release_timer(int time_usec, int time_sec);
+void *timer_thread_func(void *arguments);
 
 int task1_counter= 0;
 int task2_counter= 0;
 
-sem_t stop_sem;
+timer_t timerIds[20];
+int timer_id_counter = 0;
+
+sem_t *semaphore_stop;
+pthread_t timer_thread;
 
 int main(void) 
 {    
-    int result = 0;
-    
-    //Create an array for convolution
-    create_workload();
-    
 
+    int result = 0;
+    semaphore_stop = malloc(sizeof(sem_t));
+    result = sem_init(semaphore_stop, 0, 0);
+
+    
     //Initialize RBS
     initialize_rbs();
     
@@ -43,92 +56,88 @@ int main(void)
     InitializeSequence(&task2_data, 2, &task2_threads[1], task2_data.attr, seq_func_ptr_t2[1]);
     InitializeSequence(&task2_data, 3, &task2_threads[2], task2_data.attr, seq_func_ptr_t2[2]);   
 
+    result = pthread_create(&timer_thread, NULL, &timer_thread_func, (void*) "0");
+
+    pthread_join(timer_thread, NULL);
 
 
-
-    // SET TIMER FOR PERIODIC RELEASES OF JOBS
-    signal(SIGALRM, handler);
-    struct itimerval job_release_timer;
-    job_release_timer.it_interval.tv_usec = 10000;
-    job_release_timer.it_interval.tv_sec = 0;
-    job_release_timer.it_value.tv_usec = 10000;
-    job_release_timer.it_value.tv_sec = 0;
-    setitimer(ITIMER_REAL, &job_release_timer, NULL);
-
-
-
-    sem_wait(&stop_sem);
+    print_log_data_txt();
 
     //CLose log
     closelog();
 
 }
 
-void handler(int signo)
+void handler(int sig, siginfo_t *si, void *uc)
 {
-    if(task1_counter == 0 && task1_data.job_counter != task1_max_rel)
+    
+    if(si->si_value.sival_ptr == &timerIds[0])
     {
         ReleaseNewJob(&task1_data);
-        task1_counter = task1_period;
     }
-    else if(task1_data.job_counter == task1_max_rel)
+    else if(si->si_value.sival_ptr == &timerIds[1])
     {
-        if(task2_data.job_counter == task2_max_rel)
-        {
-            signal(SIGALRM, handler2);
-            struct itimerval job_release_timer;
-            job_release_timer.it_interval.tv_usec = 900000;
-            job_release_timer.it_interval.tv_sec = 0;
-            job_release_timer.it_value.tv_usec = 900000;
-            job_release_timer.it_value.tv_sec = 0;
-            setitimer(ITIMER_REAL, &job_release_timer, NULL);
-            return;
-        }
+        ReleaseNewJob(&task2_data);
     }
-    else
+    else if(si->si_value.sival_ptr == &timerIds[2])
     {
-        task1_counter--;
+        sem_post(semaphore_stop);
+    }
+    else{
+        printf("unknown interrupr\n");
     }
 
-
-
-    if(task2_counter == 0 && task2_data.job_counter != task2_max_rel)
-    {
-        //ReleaseNewJob(&task2_data);
-        task2_counter = task2_period;
-    }
-    else if(task2_data.job_counter == task2_max_rel)
-    {
-        if(task1_data.job_counter == task1_max_rel)
-        {
-            signal(SIGALRM, handler2);
-            struct itimerval job_release_timer;
-            job_release_timer.it_interval.tv_usec = 900000;
-            job_release_timer.it_interval.tv_sec = 0;
-            job_release_timer.it_value.tv_usec = 900000;
-            job_release_timer.it_value.tv_sec = 0;
-            setitimer(ITIMER_REAL, &job_release_timer, NULL);
-            return;
-        }       
-    }
-    else
-    {
-        task2_counter--;
-    }
+    
 }
 
-
-void handler2(int signo)
+void set_release_timer(int time_usec, int time_sec)
 {
-    struct itimerval job_release_timer;
-    job_release_timer.it_interval.tv_usec = 0;
-    job_release_timer.it_interval.tv_sec = 0;
-    job_release_timer.it_value.tv_usec = 0;
-    job_release_timer.it_value.tv_sec = 0;
-    setitimer(ITIMER_REAL, &job_release_timer, NULL);
+    int res = 0;
+    int period_nsec = 0;
+    int period_sec = 0;
 
-    display_log_data();
-    sem_post(&stop_sem);
+    if(time_sec != 0)
+    {
+        period_sec = time_sec;
+        period_nsec = time_usec * 1000;
+    }
+    else
+    {
+        period_nsec = time_usec * 1000;
+    }
+    
+
+    struct sigevent sev;
+    struct sigaction sa;
+
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGRTMIN, &sa, NULL);
+
+    sev.sigev_notify = SIGEV_SIGNAL;
+    sev.sigev_signo = SIGRTMIN;
+    sev.sigev_value.sival_ptr = &timerIds[timer_id_counter];
+    res = timer_create(CLOCK_REALTIME, &sev, &timerIds[timer_id_counter]);
+
+
+    struct itimerspec job_release_timer;
+    job_release_timer.it_interval.tv_nsec = period_nsec;
+    job_release_timer.it_interval.tv_sec = period_sec;
+    job_release_timer.it_value.tv_nsec = period_nsec;
+    job_release_timer.it_value.tv_sec = period_sec;
+
+    timer_settime(timerIds[timer_id_counter], 0 ,&job_release_timer, NULL);
+
+    timer_id_counter++;
 }
 
+void *timer_thread_func(void *arguments)
+{
+    set_release_timer(117000, 0);
+    set_release_timer(117063, 0);
+    set_release_timer(0, 10);
 
+    sem_wait(semaphore_stop);
+
+}
