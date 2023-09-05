@@ -14,6 +14,7 @@
 #include <time.h>
 #include <sched.h>
 #include <syslog.h>
+#include <stddef.h>
 
 #define LOG_DATA
 #define AUTO_SIGNAL
@@ -78,7 +79,6 @@ struct task_data
 	int number_of_nodes;
 	int number_of_sequences;
 	int job_counter;
-	bool *precedence_matrix;
 	u_int32_t *pre_cons_h;
 	u_int32_t *pre_cons_v;
 	u_int32_t *sequence_heads;
@@ -104,7 +104,7 @@ struct log_event_data
 struct timespec time_reference;
 
 pthread_mutex_t log_lock;
-struct log_event_data log_events_buffer[10000];
+struct log_event_data log_events_buffer[90000];
 int log_events_counter;
 #endif
 	
@@ -238,6 +238,8 @@ void TerminateSequence(struct sequence_data *sequenceDATA, int node);
 void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node);
 
 void display_log_data();
+
+void print_log_data_txt();
 
 
 #endif

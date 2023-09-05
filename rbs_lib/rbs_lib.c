@@ -116,6 +116,8 @@ void WaitNextJob(struct sequence_data *sequenceDATA)
 
 void ReleaseNewJob(struct task_data *taskDATA)
 {
+    
+
     //Increase the jobs counter
 	taskDATA->job_counter = taskDATA->job_counter + 1;
 
@@ -123,6 +125,8 @@ void ReleaseNewJob(struct task_data *taskDATA)
     #ifdef LOG_DATA
     log_info(taskDATA->task_id, 0, taskDATA->job_counter, taskDATA->job_counter, NEW_JOB_RELEASED);
     #endif
+
+
 	
 	//allocate memory for new job token and set variables
     struct job_token *new_job = malloc(sizeof(struct job_token));
@@ -139,10 +143,10 @@ void ReleaseNewJob(struct task_data *taskDATA)
     {
         sem_init((new_job->secondary_sequences_guards + i), 0, 0);
     }
-    
+
     //initialize job data lock
     pthread_mutex_init(&new_job->job_lock, NULL);
-    
+
     //update the pointer to the next job
     taskDATA->last_added_job->next_job = new_job;
     
@@ -153,6 +157,7 @@ void ReleaseNewJob(struct task_data *taskDATA)
     }
     sem_post(new_job->secondary_sequences_guards);
     
+
     //update the pointer to the last job
     taskDATA->last_added_job = new_job;
     
@@ -454,5 +459,63 @@ void display_log_data()
 		
 	    }
     }
+
+}
+
+
+void print_log_data_txt()
+{
+    FILE *fp;
+    fp = fopen("log.txt", "w");
+
+    for(int i = 0; i < log_events_counter; i++)
+    {
+        struct timespec time;
+
+        time.tv_sec = log_events_buffer[i].tim.tv_sec - time_reference.tv_sec;
+        time.tv_nsec = log_events_buffer[i].tim.tv_nsec; //- time_reference.tv_nsec;
+
+        double time_stamp = (double)time.tv_sec * 1000000;
+        time_stamp = time_stamp + (time.tv_nsec/1000);
+
+        int task = log_events_buffer[i].task;
+        int sequence = log_events_buffer[i].sequence;
+        int node = log_events_buffer[i].node;
+        int job = log_events_buffer[i].job;
+        int event = log_events_buffer[i].event;
+
+        if(event == NODE_EXECUTION_STARTED)
+	    {
+		    fprintf(fp, "NODE_EXECUTION_STARTED, task %d, sequence %d, node %d, job %d, at cycle: %f\n",task, sequence, node, job, time_stamp);
+            //printf("i = %d, NODE_EXECUTION_STARTED, task %d, sequence %d, node %d, job %d, at cycle: %f\n",i, task, sequence, node, job, time_stamp);
+	    }
+        else if(event == NODE_EXECUTION_FINISHED)
+        {
+            fprintf(fp, "NODE_EXECUTION_FINISHED, task %d, sequence %d, node %d, job %d, at cycle: %f\n",task, sequence, node, job, time_stamp);
+            //printf("i = %d, NODE_EXECUTION_FINISHED, task %d, sequence %d, node %d, job %d, at cycle: %f\n",i, task, sequence, node, job, time_stamp);
+        }
+        else if(event == NEW_JOB_RELEASED)
+        {
+            fprintf(fp, "NEW_JOB_RELEASED, task %d, job %d, at cycle: %f\n",task, job, time_stamp);
+            //printf("i = %d, NEW_JOB_RELEASED, task %d, job %d, at cycle: %f\n",i, task, job, time_stamp);
+        }
+        else if(event == JOB_EXECUTION_FINISHED)
+        {
+            fprintf(fp, "JOB_EXECUTION_FINISHED, task %d, job %d, at cycle: %f\n",task, job, time_stamp);
+            //printf("i = %d, JOB_EXECUTION_FINISHED, task %d, job %d, at cycle: %f\n",i, task, job, time_stamp);
+        }
+        else if(event == SEQUENCE_TERMINATED)
+        {
+            fprintf(fp, "SEQUENCE_TERMINATED, task %d, sequence %d, before node %d, job %d, at cycle: %f\n",task, sequence, node, job, time_stamp);
+            //printf("i = %d, SEQUENCE_TERMINATED, task %d, sequence %d, after node %d, job %d, at cycle: %f\n",i, task, sequence, node, job, time_stamp);
+        }
+        else
+        {
+            //fprintf(fp, "i = %d, else", i);
+		
+	    }
+    }
+
+    fclose(fp);
 
 }
