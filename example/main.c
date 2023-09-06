@@ -11,23 +11,18 @@
 
 #include "sequences.h"
 
-#define task1_period 10
-#define task2_period 20
-#define task1_max_rel 3
-#define task2_max_rel 3
-
 void handler(int sig, siginfo_t *si, void *uc);
-void set_release_timer(int time_usec, int time_sec);
+void set_release_timer(int time_usec, int time_sec, int timer_id);
 void *timer_thread_func(void *arguments);
 
-int task1_counter= 0;
-int task2_counter= 0;
+
 
 timer_t timerIds[20];
-int timer_id_counter = 0;
+
 
 sem_t *semaphore_stop;
 pthread_t timer_thread;
+
 
 int main(void) 
 {    
@@ -36,27 +31,28 @@ int main(void)
     semaphore_stop = malloc(sizeof(sem_t));
     result = sem_init(semaphore_stop, 0, 0);
 
-    
     //Initialize RBS
     initialize_rbs();
-    
 
-    //Initialize tasks
-    InitializeTask(&task1_data);
-    InitializeTask(&task2_data);
-    
+    //Initialize tasks and sequences
+    int index = 0;
+    for(int i = 0; i < number_of_tasks; i++)
+    {
+        InitializeTask(tasks_data[i]);
+        
+        int num_of_seq = tasks_data[i]->number_of_sequences;
 
-    //initialize sequences
-    InitializeSequence(&task1_data, 1, &task1_threads[0], task1_data.attr, seq_func_ptr_t1[0]);
-    InitializeSequence(&task1_data, 2, &task1_threads[1], task1_data.attr, seq_func_ptr_t1[1]);
-    InitializeSequence(&task1_data, 3, &task1_threads[2], task1_data.attr, seq_func_ptr_t1[2]);
-    InitializeSequence(&task1_data, 4, &task1_threads[3], task1_data.attr, seq_func_ptr_t1[3]);
-    
-    InitializeSequence(&task2_data, 1, &task2_threads[0], task2_data.attr, seq_func_ptr_t2[0]);
-    InitializeSequence(&task2_data, 2, &task2_threads[1], task2_data.attr, seq_func_ptr_t2[1]);
-    InitializeSequence(&task2_data, 3, &task2_threads[2], task2_data.attr, seq_func_ptr_t2[2]);   
+        for(int x = 0 ; x < num_of_seq; x++)
+        {
 
+            pthread_t *t_ptr = (tasks_data[i]->seq_threads) + x;
+            InitializeSequence(tasks_data[i], (x+1), t_ptr, tasks_data[i]->attr, seq_func_ptr[(index+x)]);
+        } 
+        index = index + num_of_seq;
+    }
+    
     result = pthread_create(&timer_thread, NULL, &timer_thread_func, (void*) "0");
+
 
     pthread_join(timer_thread, NULL);
 
@@ -73,13 +69,37 @@ void handler(int sig, siginfo_t *si, void *uc)
     
     if(si->si_value.sival_ptr == &timerIds[0])
     {
-        ReleaseNewJob(&task1_data);
+        ReleaseNewJob(tasks_data[0]);
     }
     else if(si->si_value.sival_ptr == &timerIds[1])
     {
-        ReleaseNewJob(&task2_data);
+        ReleaseNewJob(tasks_data[1]);
     }
     else if(si->si_value.sival_ptr == &timerIds[2])
+    {
+        ReleaseNewJob(tasks_data[2]);
+    }
+    else if(si->si_value.sival_ptr == &timerIds[3])
+    {
+        ReleaseNewJob(tasks_data[3]);
+    }
+    else if(si->si_value.sival_ptr == &timerIds[4])
+    {
+        ReleaseNewJob(tasks_data[4]);
+    }
+    else if(si->si_value.sival_ptr == &timerIds[5])
+    {
+        ReleaseNewJob(tasks_data[5]);
+    }
+    else if(si->si_value.sival_ptr == &timerIds[6])
+    {
+        ReleaseNewJob(tasks_data[6]);
+    }
+    else if(si->si_value.sival_ptr == &timerIds[7])
+    {
+        ReleaseNewJob(tasks_data[7]);
+    }
+    else if(si->si_value.sival_ptr == &timerIds[19])
     {
         sem_post(semaphore_stop);
     }
@@ -90,7 +110,7 @@ void handler(int sig, siginfo_t *si, void *uc)
     
 }
 
-void set_release_timer(int time_usec, int time_sec)
+void set_release_timer(int time_usec, int time_sec, int timer_id)
 {
     int res = 0;
     int period_nsec = 0;
@@ -117,8 +137,8 @@ void set_release_timer(int time_usec, int time_sec)
 
     sev.sigev_notify = SIGEV_SIGNAL;
     sev.sigev_signo = SIGRTMIN;
-    sev.sigev_value.sival_ptr = &timerIds[timer_id_counter];
-    res = timer_create(CLOCK_REALTIME, &sev, &timerIds[timer_id_counter]);
+    sev.sigev_value.sival_ptr = &timerIds[timer_id];
+    res = timer_create(CLOCK_REALTIME, &sev, &timerIds[timer_id]);
 
 
     struct itimerspec job_release_timer;
@@ -127,17 +147,18 @@ void set_release_timer(int time_usec, int time_sec)
     job_release_timer.it_value.tv_nsec = period_nsec;
     job_release_timer.it_value.tv_sec = period_sec;
 
-    timer_settime(timerIds[timer_id_counter], 0 ,&job_release_timer, NULL);
+    timer_settime(timerIds[timer_id], 0 ,&job_release_timer, NULL);
 
-    timer_id_counter++;
 }
 
 void *timer_thread_func(void *arguments)
 {
-    set_release_timer(117000, 0);
-    set_release_timer(117063, 0);
-    set_release_timer(0, 10);
+    for(int i = 0; i < number_of_tasks; i++)
+    {
+        set_release_timer((tasks_data[i]->period), 0, i);
+    }
+
+    set_release_timer(0, 3, 19);
 
     sem_wait(semaphore_stop);
-
 }
