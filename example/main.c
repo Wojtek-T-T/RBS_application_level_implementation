@@ -16,13 +16,22 @@ void set_release_timer(int time_usec, int time_sec, int timer_id);
 void *timer_thread_func(void *arguments);
 
 
-
 timer_t timerIds[20];
 
 
 sem_t *semaphore_stop;
 pthread_t timer_thread;
 
+
+struct job_timer_data
+{
+    int task_number;
+    int period_in_usec;
+    int max_number_of_jobs;
+};
+
+pthread_t job_release_threads[20];
+void *job_release_func(void *arguments);
 
 int main(void) 
 {    
@@ -39,6 +48,7 @@ int main(void)
     for(int i = 0; i < number_of_tasks; i++)
     {
         InitializeTask(tasks_data[i]);
+
         
         int num_of_seq = tasks_data[i]->number_of_sequences;
 
@@ -47,14 +57,27 @@ int main(void)
 
             pthread_t *t_ptr = (tasks_data[i]->seq_threads) + x;
             InitializeSequence(tasks_data[i], (x+1), t_ptr, tasks_data[i]->attr, seq_func_ptr[(index+x)]);
+
         } 
         index = index + num_of_seq;
+
+    }
+
+    for(int i = 0; i < number_of_tasks; i++)
+    {
+        struct job_timer_data *job_rel_tim = malloc(sizeof(struct job_timer_data));
+        job_rel_tim->task_number = i;
+        job_rel_tim->period_in_usec = tasks_data[i]->period;
+        job_rel_tim->max_number_of_jobs = 100;
+        result = pthread_create(&job_release_threads[i], NULL, &job_release_func, (void*) job_rel_tim);
+
     }
     
-    result = pthread_create(&timer_thread, NULL, &timer_thread_func, (void*) "0");
-
-
-    pthread_join(timer_thread, NULL);
+    //Wait for tasks to finish
+    for(int i = 0; i < number_of_tasks; i++)
+    {
+        pthread_join(job_release_threads[i], NULL);
+    }
 
 
     print_log_data_txt();
@@ -64,101 +87,44 @@ int main(void)
 
 }
 
-void handler(int sig, siginfo_t *si, void *uc)
+
+void *job_release_func(void *arguments)
 {
-    
-    if(si->si_value.sival_ptr == &timerIds[0])
-    {
-        ReleaseNewJob(tasks_data[0]);
-    }
-    else if(si->si_value.sival_ptr == &timerIds[1])
-    {
-        ReleaseNewJob(tasks_data[1]);
-    }
-    else if(si->si_value.sival_ptr == &timerIds[2])
-    {
-        ReleaseNewJob(tasks_data[2]);
-    }
-    else if(si->si_value.sival_ptr == &timerIds[3])
-    {
-        ReleaseNewJob(tasks_data[3]);
-    }
-    else if(si->si_value.sival_ptr == &timerIds[4])
-    {
-        ReleaseNewJob(tasks_data[4]);
-    }
-    else if(si->si_value.sival_ptr == &timerIds[5])
-    {
-        ReleaseNewJob(tasks_data[5]);
-    }
-    else if(si->si_value.sival_ptr == &timerIds[6])
-    {
-        ReleaseNewJob(tasks_data[6]);
-    }
-    else if(si->si_value.sival_ptr == &timerIds[7])
-    {
-        ReleaseNewJob(tasks_data[7]);
-    }
-    else if(si->si_value.sival_ptr == &timerIds[19])
-    {
-        sem_post(semaphore_stop);
-    }
-    else{
-        printf("unknown interrupr\n");
-    }
+    struct timespec deadline;
+    int result = 0;
+    int number_of_releases = 0;
+    struct job_timer_data *tim_data = (struct job_timer_data*) arguments;
+
+    int nano_seconds = tim_data->period_in_usec * 1000;
 
     
-}
-
-void set_release_timer(int time_usec, int time_sec, int timer_id)
-{
-    int res = 0;
-    int period_nsec = 0;
-    int period_sec = 0;
-
-    if(time_sec != 0)
+    while(true)
     {
-        period_sec = time_sec;
-        period_nsec = time_usec * 1000;
-    }
-    else
-    {
-        period_nsec = time_usec * 1000;
-    }
+        
+        clock_gettime(CLOCK_REALTIME, &deadline);
+
+        deadline.tv_nsec += nano_seconds;
+        if(deadline.tv_nsec >= 1000000000)
+        {
+            deadline.tv_nsec -=1000000000;
+            deadline.tv_sec++;
+        }
+
+        result = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &deadline, NULL);
     
+        if(number_of_releases >= tim_data->max_number_of_jobs)
+        {
+            return 0;
+        }
+        else
+        {
+            ReleaseNewJob(tasks_data[tim_data->task_number]);
+        }
 
-    struct sigevent sev;
-    struct sigaction sa;
+        number_of_releases ++;
 
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = handler;
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIGRTMIN, &sa, NULL);
-
-    sev.sigev_notify = SIGEV_SIGNAL;
-    sev.sigev_signo = SIGRTMIN;
-    sev.sigev_value.sival_ptr = &timerIds[timer_id];
-    res = timer_create(CLOCK_REALTIME, &sev, &timerIds[timer_id]);
-
-
-    struct itimerspec job_release_timer;
-    job_release_timer.it_interval.tv_nsec = period_nsec;
-    job_release_timer.it_interval.tv_sec = period_sec;
-    job_release_timer.it_value.tv_nsec = period_nsec;
-    job_release_timer.it_value.tv_sec = period_sec;
-
-    timer_settime(timerIds[timer_id], 0 ,&job_release_timer, NULL);
+        
+    }
 
 }
 
-void *timer_thread_func(void *arguments)
-{
-    for(int i = 0; i < number_of_tasks; i++)
-    {
-        set_release_timer((tasks_data[i]->period), 0, i);
-    }
-
-    set_release_timer(0, 3, 19);
-
-    sem_wait(semaphore_stop);
-}

@@ -2,19 +2,17 @@
 #define SEQUENCES_H
 #include "rbs_lib.h"
 #include "workload.h"
-
 #define number_of_tasks 2
 
 //tasks data structures
 struct task_data task1_data;
 struct task_data task2_data;
-
-
 struct task_data *tasks_data[20];
 
 //sequence functions pointers
 void *(*seq_func_ptr_t1[4])();
 void *(*seq_func_ptr_t2[3])();
+
 void *(*seq_func_ptr[7])();
 
 //node functions pointers
@@ -47,5 +45,4 @@ void *sequence_1_4_function(void *arguments);
 void *sequence_2_1_function(void *arguments);
 void *sequence_2_2_function(void *arguments);
 void *sequence_2_3_function(void *arguments);
-
 #endif
