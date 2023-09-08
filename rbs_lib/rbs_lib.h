@@ -76,6 +76,7 @@ struct task_data
 {
 	int task_id;
 	int priority;
+	int period;
 	int number_of_nodes;
 	int number_of_sequences;
 	int job_counter;
@@ -87,6 +88,8 @@ struct task_data
 	pthread_attr_t attr;
 	struct sched_param schedPARAM;
 	void (*func[100])();
+
+	pthread_t *seq_threads;
 };
 
 
@@ -104,6 +107,7 @@ struct log_event_data
 struct timespec time_reference;
 
 pthread_mutex_t log_lock;
+pthread_mutex_t release_lock;
 struct log_event_data log_events_buffer[90000];
 int log_events_counter;
 #endif

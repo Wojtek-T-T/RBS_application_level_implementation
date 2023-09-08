@@ -34,8 +34,11 @@ void initialize_rbs()
     schedPARAM.sched_priority = 99;
     result = pthread_attr_setschedparam(&attr, &schedPARAM);
     result = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+
+
+    pthread_mutex_init(&release_lock, NULL);
     
-    //set_cpu(3);
+
 
     //Initialize logger
 	#ifdef LOG_DATA
@@ -116,7 +119,7 @@ void WaitNextJob(struct sequence_data *sequenceDATA)
 
 void ReleaseNewJob(struct task_data *taskDATA)
 {
-    
+    //pthread_mutex_lock(&release_lock);
 
     //Increase the jobs counter
 	taskDATA->job_counter = taskDATA->job_counter + 1;
@@ -160,6 +163,8 @@ void ReleaseNewJob(struct task_data *taskDATA)
 
     //update the pointer to the last job
     taskDATA->last_added_job = new_job;
+
+    //pthread_mutex_unlock(&release_lock);
     
 }
 
