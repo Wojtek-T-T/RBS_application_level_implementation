@@ -21,13 +21,13 @@ u_int32_t T1_sequence_heads[7] = {1, 0, 2, 3, 0, 4, 0};
 u_int32_t T2_sequence_heads[5] = {1, 0, 2, 3, 0};
 
 //task data structures
-struct task_data task1_data = { .task_id =1, .priority =50, .number_of_nodes =7, .number_of_sequences = 4, 
+struct task_data task1_data = { .task_id =1, .priority =49, .number_of_nodes =7, .number_of_sequences = 4, 
 .job_counter = 0, .pre_cons_h = T1_precedence_constraints_h, .pre_cons_v = T1_precedence_constraints_v, 
-.sequence_heads = T1_sequence_heads, .sequences_guards = semaphores_T1, .last_added_job = NULL, .seq_threads = task1_threads, .period = 50000, 
+.sequence_heads = T1_sequence_heads, .sequences_guards = semaphores_T1, .last_added_job = NULL, .seq_threads = task1_threads, .period = 4212, 
 .func = {node_1_1, node_1_2, node_1_3, node_1_4, node_1_5, node_1_6, node_1_7}}; 
-struct task_data task2_data = { .task_id =2, .priority =20, .number_of_nodes =5, .number_of_sequences = 3, 
+struct task_data task2_data = { .task_id =2, .priority =79, .number_of_nodes =5, .number_of_sequences = 3, 
 .job_counter = 0, .pre_cons_h = T2_precedence_constraints_h, .pre_cons_v = T2_precedence_constraints_v, 
-.sequence_heads = T2_sequence_heads, .sequences_guards = semaphores_T2, .last_added_job = NULL, .seq_threads = task2_threads, .period = 70000, 
+.sequence_heads = T2_sequence_heads, .sequences_guards = semaphores_T2, .last_added_job = NULL, .seq_threads = task2_threads, .period = 7704, 
 .func = {node_2_1, node_2_2, node_2_3, node_2_4, node_2_5}}; 
 
 struct task_data *tasks_data[20] = {&task1_data, &task2_data};

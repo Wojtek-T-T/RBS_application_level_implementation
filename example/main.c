@@ -11,17 +11,6 @@
 
 #include "sequences.h"
 
-void handler(int sig, siginfo_t *si, void *uc);
-void set_release_timer(int time_usec, int time_sec, int timer_id);
-void *timer_thread_func(void *arguments);
-
-
-timer_t timerIds[20];
-
-
-sem_t *semaphore_stop;
-pthread_t timer_thread;
-
 
 struct job_timer_data
 {
@@ -37,8 +26,6 @@ int main(void)
 {    
 
     int result = 0;
-    semaphore_stop = malloc(sizeof(sem_t));
-    result = sem_init(semaphore_stop, 0, 0);
 
     //Initialize RBS
     initialize_rbs();
