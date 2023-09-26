@@ -21,11 +21,12 @@
 
 
 //LOG codes
-#define NODE_EXECUTION_STARTED 0 
-#define NEW_JOB_RELEASED 1
-#define NODE_EXECUTION_FINISHED 2
+#define NODE_EXECUTION 1 
+#define NEW_JOB_RELEASED 2
 #define JOB_EXECUTION_FINISHED 3
+#define NODE_EXECUTION_FINISHED 0
 #define SEQUENCE_TERMINATED 4
+#define SIGNALLING_EXECUTION 5
 
 //job data structures
 struct job_token
@@ -101,7 +102,8 @@ struct log_event_data
 	int node;
 	int job;
 	int event;
-	struct timespec tim;
+	struct timespec start_time;
+	struct timespec end_time;
 };
 
 struct timespec time_reference;
@@ -110,6 +112,9 @@ pthread_mutex_t log_lock;
 pthread_mutex_t release_lock;
 struct log_event_data log_events_buffer[90000];
 int log_events_counter;
+
+struct log_event_data *log_event_buffers_ptrs[400];
+int buff_indexes[400];
 #endif
 	
 	
@@ -165,9 +170,21 @@ int InitializeTask(struct task_data *taskDATA);
 			   int job = job ID
 			   int event = event type (NODE_EXECUTION_STARTED, NEW_JOB_RELEASED, NODE_EXECUTION_FINISHED, JOB_EXECUTION_FINISHED, SEQUENCE_TERMINATED)
 			   
+* RETURN TYPE: 
+				int event_index = index where the log event has been saved, needed for eventual addition of end time with log_event_end()
+*/
+struct log_event_data *log_event_start(int task, int sequence, int node, int job, int event);
+
+
+/*
+* log_event_end
+* DESCRIPTION: This function adds the end time to an existing event in the log
+* PARAMETERS: 
+			   int event_index = Index where the already existing event is saved
+
 * RETURN TYPE: NONE
 */
-void log_info(int task, int sequence, int node, int job, int event);
+void log_event_end(struct log_event_data *ptr);
 
 
 /*
@@ -244,6 +261,10 @@ void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node);
 void display_log_data();
 
 void print_log_data_txt();
+
+void print_log_data_json();
+
+void print_log_data_json2(struct task_data *taskDATA_start, int num_of_tasks);
 
 
 #endif
