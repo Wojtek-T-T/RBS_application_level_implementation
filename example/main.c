@@ -67,7 +67,12 @@ int main(void)
     }
 
 
-    print_log_data_txt();
+    //print_log_data_json();
+    //print_log_data_txt();
+
+
+    print_log_data_json2(tasks_data[0], number_of_tasks);
+
 
     //CLose log
     closelog();

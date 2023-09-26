@@ -1,4 +1,4 @@
-$(CC) = gcc
+$(CC) = gcc -O3
 CFLAGS = -I -lpthread -lrt
 
 rbs_app: main.o sequences.o workload.o otw.o rbs_lib.o
