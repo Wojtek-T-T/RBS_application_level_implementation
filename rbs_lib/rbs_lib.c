@@ -87,24 +87,6 @@ int InitializeTask(struct task_data *taskDATA)
 
 struct log_event_data *log_event_start(int task, int sequence, int node, int job, int event)
 {
-    /*
-    int local_counter = 0;
-    pthread_mutex_lock(&log_lock);
-    local_counter = log_events_counter;
-    log_events_counter++;
-    pthread_mutex_unlock(&log_lock);
-    
-
-
-    clock_gettime(CLOCK_REALTIME, &log_events_buffer[local_counter].start_time);
-    
-    log_events_buffer[local_counter].task = task;
-    log_events_buffer[local_counter].sequence = sequence;
-    log_events_buffer[local_counter].node = node;
-    log_events_buffer[local_counter].job = job;
-    log_events_buffer[local_counter].event = event;
-    */
-
     int index = (task - 1) * 20 + sequence;
     int local_buff_index = buff_indexes[index];
 
@@ -130,7 +112,6 @@ void log_event_end(struct log_event_data *ptr)
 
 void set_cpu(int cpu_num)
 {
-   //int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
    cpu_set_t cpuset;
    CPU_ZERO(&cpuset);
    CPU_SET(cpu_num, &cpuset);  
@@ -287,9 +268,13 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
     
     //Execute Node function
     sequenceDATA->task->func[(node-1)]();
-    
+
+	//Lock job_token
+    pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
     //Mark node as finished
-    MarkNodeExecuted(sequenceDATA, node);	
+    MarkNodeExecuted(sequenceDATA, node);
+	//Unlock job_token
+    pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);	
 
     //Log event
     #ifdef LOG_DATA
