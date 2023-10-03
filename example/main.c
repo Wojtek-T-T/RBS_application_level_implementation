@@ -50,13 +50,22 @@ int main(void)
 
     }
 
-    for(int i = 0; i < number_of_tasks; i++)
+    pthread_attr_t attr;
+	struct sched_param schedPARAM;
+
+    pthread_attr_init(&attr);
+    result = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+    schedPARAM.sched_priority = 99;
+    result = pthread_attr_setschedparam(&attr, &schedPARAM);
+    result = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+
+    for(int i = 3; i < number_of_tasks; i++)
     {
         struct job_timer_data *job_rel_tim = malloc(sizeof(struct job_timer_data));
         job_rel_tim->task_number = i;
         job_rel_tim->period_in_usec = tasks_data[i]->period;
-        job_rel_tim->max_number_of_jobs = 100;
-        result = pthread_create(&job_release_threads[i], NULL, &job_release_func, (void*) job_rel_tim);
+        job_rel_tim->max_number_of_jobs = 300;
+        result = pthread_create(&job_release_threads[i], &attr, &job_release_func, (void*) job_rel_tim);
 
     }
     
