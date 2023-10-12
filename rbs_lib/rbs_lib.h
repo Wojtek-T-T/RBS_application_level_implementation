@@ -27,6 +27,7 @@
 #define NODE_EXECUTION_FINISHED 0
 #define SEQUENCE_TERMINATED 4
 #define SIGNALLING_EXECUTION 5
+#define START_TIME_REL_FUNC 6
 
 //job data structures
 struct job_token
@@ -187,6 +188,10 @@ struct log_event_data *log_event_start(int task, int sequence, int node, int job
 void log_event_end(struct log_event_data *ptr);
 
 
+
+void log_first_activation(int task, struct timespec activation);
+
+
 /*
 * set_cpu
 * DESCRIPTION: This function maps a sequence thread to one specific CPU
@@ -257,10 +262,6 @@ bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_poin
 void TerminateSequence(struct sequence_data *sequenceDATA, int node);
 
 void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node);
-
-void display_log_data();
-
-void print_log_data_txt();
 
 void print_log_data_json();
 
