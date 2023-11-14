@@ -107,15 +107,9 @@ struct log_event_data
 	struct timespec end_time;
 };
 
-struct timespec time_reference;
-
-pthread_mutex_t log_lock;
-pthread_mutex_t release_lock;
-struct log_event_data log_events_buffer[90000];
-int log_events_counter;
-
-struct log_event_data *log_event_buffers_ptrs[400];
-int buff_indexes[400];
+static struct timespec time_reference;
+static struct log_event_data *log_event_buffers_ptrs[400];
+static u_int32_t buff_indexes[400];
 #endif
 	
 	
@@ -262,8 +256,6 @@ bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_poin
 void TerminateSequence(struct sequence_data *sequenceDATA, int node);
 
 void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node);
-
-void print_log_data_json();
 
 void print_log_data_json2(struct task_data *taskDATA_start, int num_of_tasks);
 
