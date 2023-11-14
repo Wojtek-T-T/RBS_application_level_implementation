@@ -24,30 +24,6 @@ void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *t
 
 void initialize_rbs()
 {
-    //Set main thread parameters
-    int result = 0;
-    pthread_attr_t attr;
-	struct sched_param schedPARAM;
-
-    pthread_attr_init(&attr);
-    result = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
-    schedPARAM.sched_priority = 99;
-    result = pthread_attr_setschedparam(&attr, &schedPARAM);
-    result = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-
-
-    pthread_mutex_init(&release_lock, NULL);
-    
-
-
-    //Initialize logger
-	#ifdef LOG_DATA
-        pthread_mutex_init(&log_lock, NULL);
-        log_events_counter = 0;
-	    openlog("RBS_IMPLEMENTATION_LOG", LOG_PID|LOG_CONS, LOG_USER);
-	#endif
-
-
     clock_gettime(CLOCK_REALTIME, &time_reference);
 }
 
@@ -77,7 +53,14 @@ int InitializeTask(struct task_data *taskDATA)
         for(int buff_nr = 0; buff_nr <= taskDATA->number_of_sequences; buff_nr ++)
         {
             int index = (taskDATA->task_id - 1) * 20 + buff_nr;
-            log_event_buffers_ptrs[index] = calloc(10000, sizeof(struct log_event_data));
+            if(buff_nr == 0)
+            {
+                log_event_buffers_ptrs[index] = calloc(10, sizeof(struct log_event_data));
+            }
+            else
+            {
+                log_event_buffers_ptrs[index] = calloc(10000, sizeof(struct log_event_data));
+            }
             buff_indexes[index] = 0;
         }
 	#endif
@@ -156,15 +139,6 @@ void ReleaseNewJob(struct task_data *taskDATA)
 
     //Increase the jobs counter
 	taskDATA->job_counter = taskDATA->job_counter + 1;
-
-    //Log event
-    #ifdef LOG_DATA
-        //if(taskDATA->job_counter == 1)
-       // {
-        //struct log_event_data *log_ptr = log_event_start(taskDATA->task_id, 0, 0, taskDATA->job_counter, NEW_JOB_RELEASED);
-        //struct log_event_data *log_ptr = log_event_start(taskDATA->task_id, 0, 0, taskDATA->job_counter, START_TIME_REL_FUNC);
-        //}
-    #endif
 	
 	//allocate memory for new job token and set variables
     struct job_token *new_job = malloc(sizeof(struct job_token));
@@ -198,10 +172,6 @@ void ReleaseNewJob(struct task_data *taskDATA)
 
     //update the pointer to the last job
     taskDATA->last_added_job = new_job;
-
-    #ifdef LOG_DATA
-        //log_event_end(log_ptr);
-    #endif
 }
 
 void FinishJob(struct sequence_data *sequenceDATA)
@@ -306,9 +276,9 @@ int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
     //Signal head nodes of sequences with incoming precedence constraints from the finished node
     #ifdef AUTO_SIGNAL
     #ifdef LOG_DATA
-            log_ptr = log_event_start(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, SIGNALLING_EXECUTION);
+            //log_ptr = log_event_start(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, SIGNALLING_EXECUTION);
         SignalSequenceAut(node, sequenceDATA);
-            log_event_end(log_ptr);
+           // log_event_end(log_ptr);
     #endif
     #endif
     
@@ -389,57 +359,6 @@ void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node)
     int mask = 1;
     mask = mask << (node - 1);
     sequenceDATA->current_job->nodes_in_execution = sequenceDATA->current_job->nodes_in_execution | mask;
-}
-
-void print_log_data_json()
-{
-    FILE *fp;
-    fp = fopen("log.json", "w");
-
-    fprintf(fp, "{\"log\":[\n");
-
-    for(int i = 0; i < log_events_counter; i++)
-    {
-        struct timespec start_time_loc;
-        struct timespec end_time_loc;
-
-        start_time_loc.tv_sec = log_events_buffer[i].start_time.tv_sec - time_reference.tv_sec;
-        start_time_loc.tv_nsec = log_events_buffer[i].start_time.tv_nsec; //- time_reference.tv_nsec;
-
-        double start_time_stamp = (double)start_time_loc.tv_sec * 1000000;
-        start_time_stamp = start_time_stamp + (start_time_loc.tv_nsec/1000);
-
-        end_time_loc.tv_sec = log_events_buffer[i].end_time.tv_sec - time_reference.tv_sec;
-        end_time_loc.tv_nsec = log_events_buffer[i].end_time.tv_nsec; //- time_reference.tv_nsec;
-
-        double time_stamp_end = (double)end_time_loc.tv_sec * 1000000;
-        time_stamp_end = time_stamp_end + (end_time_loc.tv_nsec/1000);
-
-
-        int task = log_events_buffer[i].task;
-        int sequence = log_events_buffer[i].sequence;
-        int node = log_events_buffer[i].node;
-        int job = log_events_buffer[i].job;
-        int event = log_events_buffer[i].event;
-
-        if(i == log_events_counter - 1)
-        {
-            fprintf(fp, "{\"type\" : %d, \"task\" : %d, \"sequence\" : %d, \"node\" : %d, \"job\" : %d, \"start\" : %f, \"end\" : %f}\n",event, task, sequence, node, job, start_time_stamp, time_stamp_end);
-        }
-        else
-        {
-            fprintf(fp, "{\"type\" : %d, \"task\" : %d, \"sequence\" : %d, \"node\" : %d, \"job\" : %d, \"start\" : %f, \"end\" : %f},\n",event, task, sequence, node, job, start_time_stamp, time_stamp_end);
-
-        }
-
-    }
-
-
-
-    fprintf(fp, "]\n");
-    fprintf(fp, "}\n");
-    fclose(fp);
-
 }
 
 void print_log_data_json2(struct task_data *taskDATA_start, int num_of_tasks)
