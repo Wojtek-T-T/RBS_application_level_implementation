@@ -107,9 +107,6 @@ struct log_event_data
 	struct timespec end_time;
 };
 
-static struct timespec time_reference;
-static struct log_event_data *log_event_buffers_ptrs[400];
-static u_int32_t buff_indexes[400];
 #endif
 	
 	
@@ -257,7 +254,7 @@ void TerminateSequence(struct sequence_data *sequenceDATA, int node);
 
 void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node);
 
-void print_log_data_json2(struct task_data *taskDATA_start, int num_of_tasks);
+void print_log_data_json(struct task_data *taskDATA_start, int num_of_tasks);
 
 
 #endif
