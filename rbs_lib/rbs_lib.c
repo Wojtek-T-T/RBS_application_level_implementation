@@ -1,5 +1,9 @@
 #include "rbs_lib.h"
 
+struct timespec time_reference;
+struct log_event_data *log_event_buffers_ptrs[400];
+u_int32_t buff_indexes[400];
+
 
 void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)())
 {
@@ -361,7 +365,7 @@ void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node)
     sequenceDATA->current_job->nodes_in_execution = sequenceDATA->current_job->nodes_in_execution | mask;
 }
 
-void print_log_data_json2(struct task_data *taskDATA_start, int num_of_tasks)
+void print_log_data_json(struct task_data *taskDATA_start, int num_of_tasks)
 {
     FILE *fp;
     fp = fopen("log.json", "w");
@@ -385,13 +389,13 @@ void print_log_data_json2(struct task_data *taskDATA_start, int num_of_tasks)
                 struct timespec end_time_loc;
 
                 start_time_loc.tv_sec = ptr->start_time.tv_sec - time_reference.tv_sec;
-                start_time_loc.tv_nsec = ptr->start_time.tv_nsec; //- time_reference.tv_nsec;
+                start_time_loc.tv_nsec = ptr->start_time.tv_nsec; 
 
                 double start_time_stamp = (double)start_time_loc.tv_sec * 1000000;
                 start_time_stamp = start_time_stamp + (start_time_loc.tv_nsec/1000);
 
                 end_time_loc.tv_sec = ptr->end_time.tv_sec - time_reference.tv_sec;
-                end_time_loc.tv_nsec = ptr->end_time.tv_nsec; //- time_reference.tv_nsec;
+                end_time_loc.tv_nsec = ptr->end_time.tv_nsec; 
 
                 double time_stamp_end = (double)end_time_loc.tv_sec * 1000000;
                 time_stamp_end = time_stamp_end + (end_time_loc.tv_nsec/1000);
@@ -407,13 +411,10 @@ void print_log_data_json2(struct task_data *taskDATA_start, int num_of_tasks)
                 if(task == (num_of_tasks) && x == (buff_indexes[index] - 1) && i == taskDATA->number_of_sequences)
                 {
                     fprintf(fp, "{\"type\" : %d, \"task\" : %d, \"sequence\" : %d, \"node\" : %d, \"job\" : %d, \"start\" : %f, \"end\" : %f}\n",event, task, sequence, node, job, start_time_stamp, time_stamp_end);
-                // printf("node %d, job %d\n", node, job);
-                //printf("x: %d, buff: %d , task %d, job %d\n", x, buff_indexes[index], taskDATA->task_id, ptr->job);
                 }
                 else
                 {
                     fprintf(fp, "{\"type\" : %d, \"task\" : %d, \"sequence\" : %d, \"node\" : %d, \"job\" : %d, \"start\" : %f, \"end\" : %f},\n",event, task, sequence, node, job, start_time_stamp, time_stamp_end);
-                // printf("node %d, job %d\n", node, job);
                 
                 }
 
