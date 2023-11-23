@@ -358,7 +358,7 @@ void TerminateSequence(struct sequence_data *sequenceDATA, int node)
     #endif
 }
 
-void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node)
+void MarkNodeInExecution(struct sequence_data **sequenceDATA, int node)
 {
     int mask = 1;
     mask = mask << (node - 1);
@@ -373,7 +373,7 @@ void print_log_data_json(struct task_data *taskDATA_start, int num_of_tasks)
 
     for(int task = 0; task < num_of_tasks; task ++)
     {
-        struct task_data *taskDATA = taskDATA_start + task;
+        struct task_data *taskDATA = *(taskDATA_start + task);
 
         for(int i = 0 ; i <= taskDATA->number_of_sequences; i ++)
         {
