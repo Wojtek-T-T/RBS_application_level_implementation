@@ -254,7 +254,7 @@ void TerminateSequence(struct sequence_data *sequenceDATA, int node);
 
 void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node);
 
-void print_log_data_json(struct task_data *taskDATA_start, int num_of_tasks);
+void print_log_data_json(struct task_data **taskDATA_start, int num_of_tasks);
 
 
 #endif
