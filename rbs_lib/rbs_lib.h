@@ -122,7 +122,7 @@ struct log_event_data
 *			  void *(*func)() = pointer to the sequence function		
 * RETURN TYPE: NONE
 */
-void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)());
+void RBS_InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)());
 
 
 
@@ -134,7 +134,7 @@ void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *t
 * PARAMETERS: NONE
 * RETURN TYPE: NONE
 */
-void initialize_rbs();
+void RBS_InitializeRBS();
 
 
 /*
@@ -148,7 +148,7 @@ void initialize_rbs();
 					0 = initialization was succesfull
 					1 = Initialization failed due to priority of task ou of bounds
 */
-int InitializeTask(struct task_data *taskDATA);
+int RBS_InitializeTask(struct task_data *taskDATA);
 
 
 
@@ -206,7 +206,7 @@ void set_cpu(int cpu_num);
 
 * RETURN TYPE: NONE
 */
-void WaitNextJob(struct sequence_data *sequenceDATA);
+void RBS_Wait(struct sequence_data *sequenceDATA);
 
 
 /*
@@ -218,7 +218,7 @@ void WaitNextJob(struct sequence_data *sequenceDATA);
 
 * RETURN TYPE: NONE
 */
-void ReleaseNewJob(struct task_data *taskDATA);
+void RBS_Release(struct task_data *taskDATA);
 
 void FinishJob(struct sequence_data *sequenceDATA);
 
@@ -242,7 +242,7 @@ void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node);
 					2 = Node could not be executed because it already has been executed or is being executed
 						as a part of other sequence
 */
-int TryExecuteNode(struct sequence_data *sequenceDATA, int node);
+int RBS_Execute(struct sequence_data *sequenceDATA, int node);
 
 void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, sem_t *semaphore);
 
