@@ -5,7 +5,7 @@ struct log_event_data *log_event_buffers_ptrs[400];
 u_int32_t buff_indexes[400];
 
 
-void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)())
+void RBS_InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)())
 {
 	//Allocate memory for sequence data
 	struct sequence_data *sequenceDATA = malloc(sizeof(struct sequence_data));
@@ -26,12 +26,12 @@ void InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *t
  
 }
 
-void initialize_rbs()
+void RBS_InitializeRBS()
 {
     clock_gettime(CLOCK_REALTIME, &time_reference);
 }
 
-int InitializeTask(struct task_data *taskDATA)
+int RBS_InitializeTask(struct task_data *taskDATA)
 {
     int result = 0;
 
@@ -123,7 +123,7 @@ void set_cpu(int cpu_num)
    sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
 }
 
-void WaitNextJob(struct sequence_data *sequenceDATA)
+void RBS_Wait(struct sequence_data *sequenceDATA)
 {
 	//Wait till a new job is released
 	sem_wait(sequenceDATA->semaphore);
@@ -131,14 +131,16 @@ void WaitNextJob(struct sequence_data *sequenceDATA)
 	//Update pointer
     sequenceDATA->current_job = sequenceDATA->current_job->next_job;
 
-
-    //Wait till sequence can start
-    sem_t * semaphore = sequenceDATA->current_job->secondary_sequences_guards + sequenceDATA->sequence_id - 1;
-    sem_wait(semaphore);
+    if(sequenceDATA->sequence_id != 1)
+    {
+        //Wait till sequence can start
+        sem_t * semaphore = sequenceDATA->current_job->secondary_sequences_guards + sequenceDATA->sequence_id - 2;
+        sem_wait(semaphore);
+    }   
 
 }
 
-void ReleaseNewJob(struct task_data *taskDATA)
+void RBS_Release(struct task_data *taskDATA)
 {
 
     //Increase the jobs counter
@@ -152,10 +154,10 @@ void ReleaseNewJob(struct task_data *taskDATA)
     new_job->previous_job = taskDATA->last_added_job;
 
     //Allocate memory for the secondary guards of the job sequences and initialize them
-    new_job->secondary_sequences_guards = calloc(taskDATA->number_of_sequences, sizeof(sem_t));
+    new_job->secondary_sequences_guards = calloc(taskDATA->number_of_sequences-1, sizeof(sem_t));
 
     //Initialize secondary sequence guards
-    for(int i = 0; i < taskDATA->number_of_sequences; i++)
+    for(int i = 0; i < (taskDATA->number_of_sequences-1); i++)
     {
         sem_init((new_job->secondary_sequences_guards + i), 0, 0);
     }
@@ -171,7 +173,7 @@ void ReleaseNewJob(struct task_data *taskDATA)
     {
         sem_post((taskDATA->sequences_guards + i));
     }
-    sem_post(new_job->secondary_sequences_guards);
+    //sem_post(new_job->secondary_sequences_guards);
     
 
     //update the pointer to the last job
@@ -231,7 +233,7 @@ void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node)
 
 }
 
-int TryExecuteNode(struct sequence_data *sequenceDATA, int node)
+int RBS_Execute(struct sequence_data *sequenceDATA, int node)
 {
     
 	//Lock job_token
@@ -358,14 +360,14 @@ void TerminateSequence(struct sequence_data *sequenceDATA, int node)
     #endif
 }
 
-void MarkNodeInExecution(struct sequence_data **sequenceDATA, int node)
+void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node)
 {
     int mask = 1;
     mask = mask << (node - 1);
     sequenceDATA->current_job->nodes_in_execution = sequenceDATA->current_job->nodes_in_execution | mask;
 }
 
-void print_log_data_json(struct task_data *taskDATA_start, int num_of_tasks)
+void print_log_data_json(struct task_data **taskDATA_start, int num_of_tasks)
 {
     FILE *fp;
     fp = fopen("log.json", "w");
@@ -379,7 +381,6 @@ void print_log_data_json(struct task_data *taskDATA_start, int num_of_tasks)
         {
             int index = (taskDATA->task_id - 1) * 20 + i;
 
-            
             for(int x = 0; x < buff_indexes[index]; x++)
             {
                 
