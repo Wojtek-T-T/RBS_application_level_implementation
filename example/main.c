@@ -29,15 +29,17 @@ int main(void)
     int result = 0;
     int task_with_biggest_period = 0;
     int biggest_period = 0;
+    pthread_attr_t attr[20];
+	struct sched_param schedPARAM[20];
 
     //Initialize RBS
-    initialize_rbs();
+    RBS_InitializeRBS();
 
     //Initialize tasks and sequences
     int index = 0;
     for(int i = 0; i < number_of_tasks; i++)
     {
-        InitializeTask(tasks_data[i]);
+        RBS_InitializeTask(tasks_data[i]);
 
         if(tasks_data[i]->period > biggest_period)
         {
@@ -52,15 +54,14 @@ int main(void)
         {
 
             pthread_t *t_ptr = (tasks_data[i]->seq_threads) + x;
-            InitializeSequence(tasks_data[i], (x+1), t_ptr, tasks_data[i]->attr, seq_func_ptr[(index+x)]);
+            RBS_InitializeSequence(tasks_data[i], (x+1), t_ptr, tasks_data[i]->attr, seq_func_ptr[(index+x)]);
 
         } 
         index = index + num_of_seq;
 
     }
-
-    pthread_attr_t attr[20];
-	struct sched_param schedPARAM[20];
+    
+    printf("init done\n");
 
 
     for(int i = 0; i < number_of_tasks; i++)
@@ -89,11 +90,13 @@ int main(void)
         }
     }
     
+   // printf("rel initialized\n");
+    
     //Wait for the slowest task to finish
     pthread_join(job_release_threads[task_with_biggest_period], NULL);
 
     //cancel release threads of other tasks
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < number_of_tasks; i++)
     {
         result = pthread_cancel(job_release_threads[i]);
     }
@@ -112,7 +115,7 @@ int main(void)
     
 
     //Generate JSON file
-    print_log_data_json2(tasks_data[0], number_of_tasks);
+    print_log_data_json(&tasks_data[0], number_of_tasks);
     
 
 
@@ -153,7 +156,7 @@ void *job_release_func_bounded(void *arguments)
         }
         else
         {
-            ReleaseNewJob(tasks_data[tim_data->task_number]);
+            RBS_Release(tasks_data[tim_data->task_number]);
         }
 
         number_of_releases ++;
@@ -191,7 +194,7 @@ void *job_release_func(void *arguments)
 
         result = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next_activation, NULL);
     
-        ReleaseNewJob(tasks_data[tim_data->task_number]);
+        RBS_Release(tasks_data[tim_data->task_number]);
 
         number_of_releases ++;
 
