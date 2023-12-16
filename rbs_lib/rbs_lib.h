@@ -15,6 +15,7 @@
 #include <sched.h>
 #include <syslog.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define LOG_DATA
 #define AUTO_SIGNAL
