@@ -227,7 +227,7 @@ void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node)
 {
 
     //Mark task as finished by setting the bit in the job state variable
-    int mask = 1;
+    u_int32_t mask = 1;
     mask = mask << (finished_node - 1);
     sequenceDATA->current_job->nodes_finished = sequenceDATA->current_job->nodes_finished | mask;
 
@@ -235,6 +235,7 @@ void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node)
 
 int RBS_Execute(struct sequence_data *sequenceDATA, int node)
 {
+    
     
 	//Lock job_token
     pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
@@ -287,6 +288,7 @@ int RBS_Execute(struct sequence_data *sequenceDATA, int node)
            // log_event_end(log_ptr);
     #endif
     #endif
+
     
     return 0;
 }
@@ -326,7 +328,7 @@ void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
                 if(check_precedence_constraints(sequenceDATA, (i+1)))
                 {
                     //SIGNAL
-                    sem_t *semaphore = sequenceDATA->current_job->secondary_sequences_guards + sequence - 1;	
+                    sem_t *semaphore = sequenceDATA->current_job->secondary_sequences_guards + sequence - 2;	
                     sem_post(semaphore);
                 }
             }
@@ -336,7 +338,7 @@ void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
 
 bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer)
 {
-    int mask = 1;
+    u_int32_t mask = 1;
     mask = mask << (node_number - 1);
     u_int32_t local_execution_state = job_pointer->nodes_in_execution;
     
@@ -362,7 +364,7 @@ void TerminateSequence(struct sequence_data *sequenceDATA, int node)
 
 void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node)
 {
-    int mask = 1;
+    u_int32_t mask = 1;
     mask = mask << (node - 1);
     sequenceDATA->current_job->nodes_in_execution = sequenceDATA->current_job->nodes_in_execution | mask;
 }
