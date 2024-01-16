@@ -1,8 +1,8 @@
 #include "rbs_lib.h"
 
 struct timespec time_reference;
-struct log_event_data *log_event_buffers_ptrs[400];
-u_int32_t buff_indexes[400];
+struct log_event_data *log_event_buffers_ptrs[1600];
+u_int32_t buff_indexes[1600];
 
 
 void RBS_InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)())
@@ -56,7 +56,7 @@ int RBS_InitializeTask(struct task_data *taskDATA)
 	#ifdef LOG_DATA
         for(int buff_nr = 0; buff_nr <= taskDATA->number_of_sequences; buff_nr ++)
         {
-            int index = (taskDATA->task_id - 1) * 20 + buff_nr;
+            int index = (taskDATA->task_id - 1) * 40 + buff_nr;
             if(buff_nr == 0)
             {
                 log_event_buffers_ptrs[index] = calloc(10, sizeof(struct log_event_data));
@@ -74,7 +74,7 @@ int RBS_InitializeTask(struct task_data *taskDATA)
 
 struct log_event_data *log_event_start(int task, int sequence, int node, int job, int event)
 {
-    int index = (task - 1) * 20 + sequence;
+    int index = (task - 1) * 40 + sequence;
     int local_buff_index = buff_indexes[index];
 
     struct log_event_data *ptr = log_event_buffers_ptrs[index] + local_buff_index;
@@ -99,7 +99,7 @@ void log_event_end(struct log_event_data *ptr)
 
 void log_first_activation(int task, struct timespec activation)
 {
-    int index = (task - 1) * 20;
+    int index = (task - 1) * 40;
     int local_buff_index = buff_indexes[index];
 
     struct log_event_data *ptr = log_event_buffers_ptrs[index] + local_buff_index;
@@ -210,7 +210,7 @@ bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int32_t 
         return true;
     }
     
-    u_int32_t *ptr = (sequenceDATA->task->pre_cons_h + node_number - 1);
+    uint64_t *ptr = (sequenceDATA->task->pre_cons_h + node_number - 1);
     if(*ptr == (*ptr & sequenceDATA->current_job->nodes_finished))
     {
         return true;
@@ -227,7 +227,7 @@ void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node)
 {
 
     //Mark task as finished by setting the bit in the job state variable
-    u_int32_t mask = 1;
+    uint64_t mask = 1;
     mask = mask << (finished_node - 1);
     sequenceDATA->current_job->nodes_finished = sequenceDATA->current_job->nodes_finished | mask;
 
@@ -235,7 +235,6 @@ void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node)
 
 int RBS_Execute(struct sequence_data *sequenceDATA, int node)
 {
-    
     
 	//Lock job_token
     pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
@@ -267,6 +266,11 @@ int RBS_Execute(struct sequence_data *sequenceDATA, int node)
     
     //Execute Node function
     sequenceDATA->task->func[(node-1)]();
+    
+    //Log event
+    #ifdef LOG_DATA
+        log_event_end(log_ptr);
+    #endif
 
 	//Lock job_token
     pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
@@ -274,11 +278,6 @@ int RBS_Execute(struct sequence_data *sequenceDATA, int node)
     MarkNodeExecuted(sequenceDATA, node);
 	//Unlock job_token
     pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);	
-
-    //Log event
-    #ifdef LOG_DATA
-        log_event_end(log_ptr);
-    #endif
     
     //Signal head nodes of sequences with incoming precedence constraints from the finished node
     #ifdef AUTO_SIGNAL
@@ -304,8 +303,9 @@ void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, s
 
 void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
 {
+
     //Nodes that have incoming precedence constraints from the finished node
-    u_int32_t pre_cons = *(sequenceDATA->task->pre_cons_v + finished_node - 1);
+    uint64_t pre_cons = *(sequenceDATA->task->pre_cons_v + finished_node - 1);
 
     //If there are no nodes with incoming precedence constraints from the finshed node => nothing to signal
     if(pre_cons == 0)
@@ -313,10 +313,11 @@ void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
         return;
     }
 
-    for(int i = 0; i < sequenceDATA->task->number_of_nodes; i ++)
+    for(uint64_t i = 0; i < sequenceDATA->task->number_of_nodes; i ++)
     {
-        u_int32_t mask = 1 << i;
-
+        uint64_t mask = 1;
+        mask = mask << i;
+                    
         if((mask & pre_cons) != 0)
         {
             //number of sequence of which the node is head of
@@ -330,6 +331,7 @@ void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
                     //SIGNAL
                     sem_t *semaphore = sequenceDATA->current_job->secondary_sequences_guards + sequence - 2;	
                     sem_post(semaphore);
+                    
                 }
             }
         }
@@ -338,9 +340,9 @@ void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
 
 bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer)
 {
-    u_int32_t mask = 1;
+    uint64_t mask = 1;
     mask = mask << (node_number - 1);
-    u_int32_t local_execution_state = job_pointer->nodes_in_execution;
+    uint64_t local_execution_state = job_pointer->nodes_in_execution;
     
     local_execution_state = local_execution_state & mask;
     
@@ -364,7 +366,7 @@ void TerminateSequence(struct sequence_data *sequenceDATA, int node)
 
 void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node)
 {
-    u_int32_t mask = 1;
+    uint64_t mask = 1;
     mask = mask << (node - 1);
     sequenceDATA->current_job->nodes_in_execution = sequenceDATA->current_job->nodes_in_execution | mask;
 }
@@ -381,7 +383,7 @@ void print_log_data_json(struct task_data **taskDATA_start, int num_of_tasks)
 
         for(int i = 0 ; i <= taskDATA->number_of_sequences; i ++)
         {
-            int index = (taskDATA->task_id - 1) * 20 + i;
+            int index = (taskDATA->task_id - 1) * 40 + i;
 
             for(int x = 0; x < buff_indexes[index]; x++)
             {
