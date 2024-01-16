@@ -1,6 +1,6 @@
 #ifndef SEQUENCES_H
 #define SEQUENCES_H
-#include "rbs_lib.h"
+#include "../rbs_lib/rbs_lib.h"
 #include "workload.h"
 #define number_of_tasks 2
 
