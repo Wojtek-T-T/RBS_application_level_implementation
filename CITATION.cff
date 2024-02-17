@@ -1,0 +1,10 @@
+cff-version: 1.0.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Trocinski"
+  given-names: "Wojciech"
+title: "rbs_lib_app"
+version: 1.0.0
+doi: 10.5281/zenodo.1234
+date-released: 2024-02-21
+url: "https://github.com/Wojtek-T-T/RBS_application_level_implementation"
