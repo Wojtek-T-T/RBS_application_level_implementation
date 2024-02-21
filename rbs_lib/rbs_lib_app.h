@@ -38,10 +38,10 @@ struct job_token
 	struct job_token *previous_job;
 	
 	//Bitmap containg information which nodes of the job are being executed
-    u_int32_t nodes_in_execution;
+    uint64_t nodes_in_execution;
 
 	//Bitmap containing information which nodes of the job are finished
-    u_int32_t nodes_finished;
+    uint64_t nodes_finished;
 
 	//Lock that locks the job token
     pthread_mutex_t job_lock;
@@ -83,9 +83,9 @@ struct task_data
 	int number_of_nodes;
 	int number_of_sequences;
 	int job_counter;
-	u_int32_t *pre_cons_h;
-	u_int32_t *pre_cons_v;
-	u_int32_t *sequence_heads;
+	uint64_t *pre_cons_h;
+	uint64_t *pre_cons_v;
+	uint64_t *sequence_heads;
 	sem_t *sequences_guards;
 	struct job_token *last_added_job;
 	pthread_attr_t attr;
@@ -123,7 +123,7 @@ struct log_event_data
 *			  void *(*func)() = pointer to the sequence function		
 * RETURN TYPE: NONE
 */
-void RBS_InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)());
+void RBS_InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, void *(*func)());
 
 
 
@@ -225,7 +225,7 @@ void FinishJob(struct sequence_data *sequenceDATA);
 
 bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int32_t node_number);
 
-void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node);
+void mark_node_executed(struct sequence_data *sequenceDATA, int finished_node);
 
 
 
@@ -247,15 +247,15 @@ int RBS_Execute(struct sequence_data *sequenceDATA, int node);
 
 void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, sem_t *semaphore);
 
-void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA);
+void Signal(int finished_node, struct sequence_data *sequenceDATA);
 
 bool check_if_node_in_execution(u_int8_t node_number, struct job_token *job_pointer);
 
 void TerminateSequence(struct sequence_data *sequenceDATA, int node);
 
-void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node);
+void mark_node_in_execution(struct sequence_data *sequenceDATA, int node);
 
-void print_log_data_json(struct task_data **taskDATA_start, int num_of_tasks);
+void ExportLogFile(struct task_data **taskDATA_start, int num_of_tasks);
 
 
 #endif
