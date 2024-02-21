@@ -1,11 +1,11 @@
-#include "rbs_lib.h"
+#include "rbs_lib_app.h"
 
 struct timespec time_reference;
 struct log_event_data *log_event_buffers_ptrs[1600];
 u_int32_t buff_indexes[1600];
 
 
-void RBS_InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, pthread_attr_t attr, void *(*func)())
+void RBS_InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_t *thread, void *(*func)())
 {
 	//Allocate memory for sequence data
 	struct sequence_data *sequenceDATA = malloc(sizeof(struct sequence_data));
@@ -22,7 +22,7 @@ void RBS_InitializeSequence(struct task_data *taskDATA, int sequenceID, pthread_
 	sem_init(semaphore, 0, 0);
 	
 	//Initialize thread
-    int result = pthread_create(thread, &attr, func, (void*) sequenceDATA);
+    int result = pthread_create(thread, &taskDATA->attr, func, (void*) sequenceDATA);
  
 }
 
@@ -223,7 +223,7 @@ bool check_precedence_constraints(struct sequence_data *sequenceDATA, u_int32_t 
 
 }
 
-void MarkNodeExecuted(struct sequence_data *sequenceDATA, int finished_node)
+void mark_node_executed(struct sequence_data *sequenceDATA, int finished_node)
 {
 
     //Mark task as finished by setting the bit in the job state variable
@@ -254,7 +254,7 @@ int RBS_Execute(struct sequence_data *sequenceDATA, int node)
     } 
     
     //Change node state to being executed
-    MarkNodeInExecution(sequenceDATA, node);
+    mark_node_in_execution(sequenceDATA, node);
 	
 	//Unlock job_token
     pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);
@@ -275,7 +275,7 @@ int RBS_Execute(struct sequence_data *sequenceDATA, int node)
 	//Lock job_token
     pthread_mutex_lock(&sequenceDATA->current_job->job_lock);
     //Mark node as finished
-    MarkNodeExecuted(sequenceDATA, node);
+    mark_node_executed(sequenceDATA, node);
 	//Unlock job_token
     pthread_mutex_unlock(&sequenceDATA->current_job->job_lock);	
     
@@ -283,7 +283,7 @@ int RBS_Execute(struct sequence_data *sequenceDATA, int node)
     #ifdef AUTO_SIGNAL
     #ifdef LOG_DATA
             //log_ptr = log_event_start(sequenceDATA->task->task_id, sequenceDATA->sequence_id, node, sequenceDATA->current_job->job_id, SIGNALLING_EXECUTION);
-        SignalSequenceAut(node, sequenceDATA);
+        Signal(node, sequenceDATA);
            // log_event_end(log_ptr);
     #endif
     #endif
@@ -301,7 +301,7 @@ void SignalSequenceMan(struct sequence_data *sequenceDATA, int node_to_signal, s
     }
 }
 
-void SignalSequenceAut(int finished_node, struct sequence_data *sequenceDATA)
+void Signal(int finished_node, struct sequence_data *sequenceDATA)
 {
 
     //Nodes that have incoming precedence constraints from the finished node
@@ -364,14 +364,14 @@ void TerminateSequence(struct sequence_data *sequenceDATA, int node)
     #endif
 }
 
-void MarkNodeInExecution(struct sequence_data *sequenceDATA, int node)
+void mark_node_in_execution(struct sequence_data *sequenceDATA, int node)
 {
     uint64_t mask = 1;
     mask = mask << (node - 1);
     sequenceDATA->current_job->nodes_in_execution = sequenceDATA->current_job->nodes_in_execution | mask;
 }
 
-void print_log_data_json(struct task_data **taskDATA_start, int num_of_tasks)
+void ExportLogFile(struct task_data **taskDATA_start, int num_of_tasks)
 {
     FILE *fp;
     fp = fopen("log.json", "w");
