@@ -14,9 +14,9 @@
 #include <sched.h>
 #include <syslog.h>
 
-volatile int conv_array[10100];
+extern volatile int conv_array[10100];
 
-int mask[11];
+extern int mask[11];
 
 void one_time_unit_workload();
 

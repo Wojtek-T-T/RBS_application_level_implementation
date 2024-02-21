@@ -34,13 +34,14 @@ int main(void)
 
     //Initialize RBS
     RBS_InitializeRBS();
+    
 
     //Initialize tasks and sequences
     int index = 0;
     for(int i = 0; i < number_of_tasks; i++)
     {
         RBS_InitializeTask(tasks_data[i]);
-
+    
         if(tasks_data[i]->period > biggest_period)
         {
             biggest_period = tasks_data[i]->period;
@@ -54,14 +55,13 @@ int main(void)
         {
 
             pthread_t *t_ptr = (tasks_data[i]->seq_threads) + x;
-            RBS_InitializeSequence(tasks_data[i], (x+1), t_ptr, tasks_data[i]->attr, seq_func_ptr[(index+x)]);
+            RBS_InitializeSequence(tasks_data[i], (x+1), t_ptr, seq_func_ptr[(index+x)]);
 
         } 
         index = index + num_of_seq;
 
     }
     
-    printf("init done\n");
 
 
     for(int i = 0; i < number_of_tasks; i++)
@@ -105,7 +105,8 @@ int main(void)
     struct timespec wait_struct;
     clock_gettime(CLOCK_REALTIME, &wait_struct);
 
-    wait_struct.tv_nsec += 200000000;
+    wait_struct.tv_sec += 0;
+    wait_struct.tv_nsec += 50000000;
     if(wait_struct.tv_nsec >= 1000000000)
     {
         wait_struct.tv_nsec -=1000000000;
@@ -115,7 +116,7 @@ int main(void)
     
 
     //Generate JSON file
-    print_log_data_json(&tasks_data[0], number_of_tasks);
+    ExportLogFile(&tasks_data[0], number_of_tasks);
     
 
 
